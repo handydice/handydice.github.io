@@ -1,0 +1,426 @@
+:root {
+  color-scheme: dark light;
+  --bg: #12141a;
+  --card: #1c202b;
+  --fg: #e8eaf0;
+  --muted: #8a91a3;
+  --border: #2a3040;
+  --accent: #ffb02e;
+  --accent-fg: #1a1205;
+  --die: #f7f5ef;
+  --pip: #191919;
+  --tray-label: var(--accent);
+  --tray-bg: #ffffff1f;
+  --danger: #ff5a5f;
+  /* Ground shadow of the shaped dice. */
+  --die-shadow: drop-shadow(.14rem .3rem .22rem #0006);
+}
+:root[data-theme="light"] { color-scheme: light; --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #f7f5ef; --tray-label: #855000; --tray-bg: #00000029; --danger: #c62828; }
+:root[data-theme="dark"] { color-scheme: dark; }
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] { --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #f7f5ef; --tray-label: #855000; --tray-bg: #00000029; --danger: #c62828; }
+}
+/* Primary color (cup, selection, tray borders) follows the background; without a texture it stays orange.
+   Trays: lighten dark textures, darken light ones – regardless of theme. */
+:root[data-surface="casino"] { --accent: #4cd982; --accent-fg: #052e16; --tray-label: var(--accent); --tray-bg: #ffffff38; --chrome-bg: #ffffff1a; --chrome-fg: #fff; --chrome-border: #ffffff33; }
+:root[data-surface="oak"] { --accent: #4e2c13; --accent-fg: #f6e6d3; --tray-label: var(--accent); --tray-bg: #00000030; --chrome-bg: #0000002e; --chrome-fg: #fff; --chrome-border: #ffffff2e; }
+:root[data-surface="crafts"] { --accent: #2e8a93; --accent-fg: #fff; --tray-label: var(--accent); --tray-bg: #2e8a9338; --chrome-bg: #ffffff59; --chrome-fg: #2b2620; --chrome-border: #0000001a; }
+:root[data-surface="bluewood"] { --accent: #6c9fc5; --accent-fg: #0b1b28; --tray-label: var(--accent); --tray-bg: #00000030; --chrome-bg: #ffffff1a; --chrome-fg: #fff; --chrome-border: #ffffff33; }
+:root[data-surface="terracotta"] { --accent: #9c3d10; --accent-fg: #ffecd9; --tray-label: var(--accent); --tray-bg: #00000030; --chrome-bg: #ffffff59; --chrome-fg: #4a2410; --chrome-border: #0000001a; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+/* No double-tap zoom while interacting; scrolling and pinch zoom remain possible. */
+html, body, dialog { touch-action: manipulation; }
+html { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+input { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
+/* iOS PWA fullscreen as in tabubu: height: 100% defeats viewport-fit=cover, and in the
+   installed app 100vh/100dvh are too short. --app-height is measured by viewport.js. */
+html { height: var(--app-height, 100vh); }
+html, body { margin: 0; }
+body {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--app-height, 100vh); overflow: hidden;
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+/* Hidden until app.js has translated and rendered, so the UI appears in one step. */
+html:not(.ready) main { visibility: hidden; }
+main {
+  --surface-gap: .6rem;
+  position: relative;
+  display: flex; flex-direction: column;
+  height: 100%; max-width: 32rem; margin: 0 auto;
+  padding: max(var(--surface-gap), env(safe-area-inset-top)) max(var(--surface-gap), env(safe-area-inset-right)) max(var(--surface-gap), env(safe-area-inset-bottom)) max(var(--surface-gap), env(safe-area-inset-left));
+}
+/* Equal spacing between buttons, table and the two fixed tray rows. */
+header, #dice, .trays { margin-bottom: var(--surface-gap); }
+/* Header: add and set shortcuts on the left, settings on the right. */
+header { display: flex; justify-content: space-between; align-items: center; gap: var(--surface-gap); }
+header button {
+  display: flex; align-items: center; gap: .4rem;
+  min-height: 3.5rem; padding: 0 .7rem;
+  font: inherit; font-size: 1.05rem; font-weight: 700; color: var(--chrome-fg, var(--fg));
+  background: var(--chrome-bg, var(--card)); border: 1px solid var(--chrome-border, var(--border)); border-radius: 1rem; cursor: pointer;
+}
+/* On textures: helper buttons as lightly tinted glass so they recede next to the dice. */
+[data-surface]:not([data-surface=""]) header button { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+header button:active { transform: scale(.97); }
+#new-die, #open { flex: none; justify-content: center; }
+#new-die .plus { font-size: 1.8rem; line-height: 1; }
+#open { width: 3.5rem; padding: 0; }
+#quick { margin-right: auto; }
+header button:disabled { opacity: .5; cursor: default; }
+#open svg { width: 1.9rem; height: 1.9rem; }
+
+/* Die size and row layout adapt to the available table area. */
+#dice {
+  flex: 1; min-height: 0; overflow: hidden;
+  order: 2;
+  display: grid; grid-template-columns: repeat(var(--dice-columns, 3), var(--dice-size, calc((100% - 2rem) / 3))); justify-content: center; align-content: center;
+  gap: 1rem; padding: var(--surface-gap) .2rem;
+  border: 1px dashed transparent; border-radius: 1rem;
+}
+#dice .die { width: var(--dice-size, 100%); }
+#dice .ghost { visibility: hidden; }
+/* Background: square textures for the whole app, cropped via cover in portrait and landscape.
+   The color is the texture's average, shown until the image has loaded. */
+[data-surface="casino"] body { background: #09491f url(backgrounds/casino.webp) center / cover; }
+[data-surface="oak"] body { background: #8f8071 url(backgrounds/oak.webp) center / cover; }
+[data-surface="crafts"] body { background: #e5d8c4 url(backgrounds/crafts.webp) center / cover; }
+[data-surface="bluewood"] body { background: #3a4a57 url(backgrounds/bluewood.webp) center / cover; }
+[data-surface="terracotta"] body { background: #cf6736 url(backgrounds/terracotta.webp) center / cover; }
+/* Labels on the texture: dark badge instead of theme text, readable in light and dark. */
+[data-surface]:not([data-surface=""]) #total, [data-surface]:not([data-surface=""]) .tray-total,
+[data-surface]:not([data-surface=""]) .tray-dice:empty::before, [data-surface]:not([data-surface=""]) #dice::before { padding: 0 .4rem; border-radius: .5rem; background: #000a; color: #fff; }
+
+/* Drop targets become visible while dragging or after a two-tap selection. */
+.trays { display: flex; gap: var(--surface-gap); }
+#controls, #trayarea { display: contents; }
+#toptrays { order: 1; }
+#bottomtrays { order: 3; }
+.tray {
+  flex: 1; min-width: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: .55rem;
+  min-height: 5.2rem; padding: .7rem;
+  max-height: 25dvh; overflow: hidden;
+  background: transparent; border: 1px solid transparent; border-radius: 1rem;
+}
+.tray.occupied { grid-template-columns: minmax(0, 1fr) auto; }
+.tray-dice { min-width: 0; min-height: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: inherit; overflow: auto; }
+.tray-dice:empty { align-content: center; }
+.tray-total { align-self: center; white-space: nowrap; }
+/* Lighten slightly (dark) or darken (light) so a background texture shows through. */
+.dragging .tray, .choosing .tray { background: var(--tray-bg); border-color: var(--accent); }
+.dragging .tray-dice:empty::before, .choosing .tray-dice:empty::before { content: attr(data-label); margin: auto; color: var(--tray-label); font-size: 1.05rem; }
+.tray .die { width: var(--tray-die-size, 3.6rem); }
+/* Insertion gap while dragging: an empty die slot where the die will land. */
+.tray .ins {
+  flex: none; width: var(--tray-die-size, 3.6rem); aspect-ratio: 1; border-radius: 18%;
+  border: 1px dashed var(--accent);
+}
+/* Drop target and insertion marker: 1px dashed in primary color; the insertion marker stays transparent. */
+#dice.over { border-color: var(--accent); }
+.tray.over { border-style: dashed; }
+.choosing #dice { position: relative; border-color: var(--accent); }
+.choosing #dice::before { content: attr(data-label); position: absolute; top: .25rem; left: .5rem; z-index: 2; padding: 0 .25rem; background: var(--bg); color: var(--tray-label); font-size: .85rem; pointer-events: none; }
+.die.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.die {
+  position: relative; aspect-ratio: 1;
+  display: grid; place-items: center;
+  background: var(--die); color: var(--pip);
+  border-radius: 18%;
+  box-shadow: 0 4px 0 #0004, inset 0 -3px 0 #0001;
+  cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
+}
+/* Palette also applies to quick pick, settings and trays. */
+.die[data-color="blue"] { --die: #1652f0; --pip: #fff; }
+.die[data-color="yellow"] { --die: #ffcc00; --pip: #1f2430; }
+.die[data-color="green"] { --die: #00b347; --pip: #fff; }
+.die[data-color="orange"] { --die: #ff7300; --pip: #fff; }
+.die[data-color="purple"] { --die: #7a1fff; --pip: #fff; }
+.die[data-color="white"] { --die: #f7f5ef; --pip: #171717; }
+.die[data-color="red"] { --die: #e3101e; --pip: #fff; }
+.die[data-color="brown"] { --die: #8a5a32; --pip: #fff; }
+.die[data-color="turquoise"] { --die: #00c2b8; --pip: #002826; }
+.die[data-color="pink"] { --die: #ff2d95; --pip: #fff; }
+.die[data-color="gray"] { --die: #343a46; --pip: #fff; border: 1px solid var(--border); }
+/* Skins: face.webp is the blank die including its lighting, pips.webp the same die with all seven pips.
+   The mask shows only the rolled pips. On other dice (and number D6) --die/--pip are the fallback. */
+.die[data-color="skin-opal"] { --die: #c0cceb; --pip: #141414; --face: url(skins/opal/face.webp); --pips: url(skins/opal/pips.webp); }
+.die[data-color="skin-wood"] { --die: #dd7d36; --pip: #141414; --face: url(skins/wood/face.webp); --pips: url(skins/wood/pips.webp); }
+.die[data-color="skin-galaxy"] { --die: #321474; --pip: #e2ac3c; --face: url(skins/galaxy/face.webp); --pips: url(skins/galaxy/pips.webp); }
+.die[data-color="skin-jade"] { --die: #267947; --pip: #e2ac3c; --face: url(skins/jade/face.webp); --pips: url(skins/jade/pips.webp); }
+.die[data-color="skin-amber"] { --die: #e67113; --pip: #141414; --face: url(skins/amber/face.webp); --pips: url(skins/amber/pips.webp); }
+.die[data-color="skin-terrazzo"] { --die: #edd7c4; --pip: #141414; --face: url(skins/terrazzo/face.webp); --pips: url(skins/terrazzo/pips.webp); }
+.die[data-color="skin-ruby"] { --die: #aa0d0b; --pip: #f2f2f2; --face: url(skins/ruby/face.webp); --pips: url(skins/ruby/pips.webp); }
+.die[data-color="skin-steel"] { --die: #9c9393; --pip: #141414; --face: url(skins/steel/face.webp); --pips: url(skins/steel/pips.webp); }
+.die[data-color="skin-prism"] { --die: #c9b8d3; --pip: #b8860b; --face: url(skins/prism/face.webp); --pips: url(skins/prism/pips.webp); }
+.die[data-color="skin-marble"] { --die: #32271b; --pip: #e2ac3c; --face: url(skins/marble/face.webp); --pips: url(skins/marble/pips.webp); }
+.die[data-color="skin-ice"] { --die: #3a99df; --pip: #141414; --face: url(skins/ice/face.webp); --pips: url(skins/ice/pips.webp); }
+.die[data-color="skin-walnut"] { --die: #b4511e; --pip: #1e1410; --face: url(skins/walnut/face.webp); --pips: url(skins/walnut/pips.webp); }
+/* The square element remains the hit target; only its painted die changes shape. */
+.die[data-shape] { --type-bottom: 10%; background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  /* Ground shadow falls away from the top-left light. It must sit on the parent: WebKit clips
+     a drop-shadow that lives on the same element as the clip-path, hiding it completely. */
+  filter: var(--die-shadow); transition: filter .12s ease-out;
+}
+.die[data-shape]::before {
+  content: ""; position: absolute; inset: 2% 2% 6%;
+  background-color: var(--die);
+  clip-path: var(--die-shape);
+}
+.die[data-shape="d4"] { --die-shape: polygon(50% 0, 98% 94%, 2% 94%); }
+.die[data-shape="d6"] { --die-shape: inset(0 round 18%); }
+.die[data-shape="d8"] { --die-shape: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.die[data-shape="d10"] { --die-shape: polygon(50% 0, 84% 17%, 100% 50%, 84% 83%, 50% 100%, 16% 83%, 0 50%, 16% 17%); }
+.die[data-shape="d12"] { --die-shape: polygon(50% 0, 79% 9%, 98% 35%, 98% 65%, 79% 91%, 50% 100%, 21% 91%, 2% 65%, 2% 35%, 21% 9%); }
+.die[data-shape="d20"] { --die-shape: polygon(50% 0, 69% 4%, 85% 15%, 96% 31%, 100% 50%, 96% 69%, 85% 85%, 69% 96%, 50% 100%, 31% 96%, 15% 85%, 4% 69%, 0 50%, 4% 31%, 15% 15%, 31% 4%); }
+.die[data-shape="d100"] { --die-shape: circle(49%); }
+.die[data-shape="d4"]::before {
+  background-image: conic-gradient(from 232deg at 50% 56%, #fff5 0 35.6%, #fff1 35.6% 71.1%, #0003 71.1%);
+}
+.die[data-shape="d6"]::before {
+  background-image:
+    linear-gradient(90deg, #fff4 0 7%, transparent 7%),
+    linear-gradient(180deg, #fff3 0 7%, transparent 7%),
+    linear-gradient(270deg, #0003 0 8%, transparent 8%),
+    linear-gradient(0deg, #0002 0 8%, transparent 8%);
+}
+.die[data-shape="d8"]::before {
+  background-image: conic-gradient(from 225deg, #fff5 0 25%, transparent 25% 50%, #0003 50% 75%, #0001 75%);
+}
+.die[data-shape="d10"]::before {
+  background-image: conic-gradient(from 284deg, #fff5 0 10%, #fff3 10% 20%, #fff2 20% 30%, transparent 30% 50%, #0001 50% 70%, #0003 70% 80%, #0002 80% 90%, #fff1 90%);
+}
+.die[data-shape="d12"]::before, .die[data-shape="d20"]::before {
+  background-position: center; background-size: contain; background-repeat: no-repeat;
+}
+.die[data-shape="d12"]::before { background-image: url(icons/d12-shading.svg); }
+.die[data-shape="d20"]::before { background-image: url(icons/d20-shading.svg); }
+.die[data-shape="d100"]::before {
+  background-image:
+    radial-gradient(circle at 31% 27%, #fff5 0 18%, transparent 18%),
+    linear-gradient(135deg, transparent 0 54%, #0003 54%);
+}
+.die[data-shape="d12"]::after, .die[data-shape="d20"]::after {
+  content: ""; position: absolute; inset: 2% 2% 6%; z-index: 0; pointer-events: none;
+  background: var(--pip); opacity: .14; clip-path: var(--die-shape);
+  -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat;
+}
+.die[data-shape="d12"]::after { -webkit-mask-image: url(icons/d12-facets.svg); mask-image: url(icons/d12-facets.svg); }
+.die[data-shape="d20"]::after { -webkit-mask-image: url(icons/d20-facets.svg); mask-image: url(icons/d20-facets.svg); }
+.die[data-shape] .num, .die[data-shape] small, .die[data-shape] .pips { z-index: 1; }
+.die[data-shape="d4"] .num { transform: translateY(14%); }
+.die:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.die .num { font-size: min(2.7rem, calc(var(--dice-size, 8rem) * .4)); font-weight: 800; font-variant-numeric: tabular-nums; }
+.die small { position: absolute; bottom: var(--type-bottom, 5%); font-size: .7rem; opacity: .55; }
+.tray .die .num { font-size: 1.35rem; }
+.tray .die small { font-size: .5rem; bottom: var(--type-bottom, 2%); }
+.pips {
+  /* Own area reference instead of percentage height in the flex layout of native Safari buttons. */
+  position: absolute; inset: 0;
+  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  padding: 13%;
+}
+.pips i { margin: 13%; border-radius: 50%; }
+.pips i.on { background: var(--pip); }
+/* Skin pip positions: the painted pips sit at 24/50/76 % in every skin image (3×3 grid index 0–8). */
+.pips[data-value="1"] { --m: var(--p4); }
+.pips[data-value="2"] { --m: var(--p0), var(--p8); }
+.pips[data-value="3"] { --m: var(--p0), var(--p4), var(--p8); }
+.pips[data-value="4"] { --m: var(--p0), var(--p2), var(--p6), var(--p8); }
+.pips[data-value="5"] { --m: var(--p0), var(--p2), var(--p4), var(--p6), var(--p8); }
+.pips[data-value="6"] { --m: var(--p0), var(--p2), var(--p3), var(--p5), var(--p6), var(--p8); }
+/* Square box inside the die (same as ::before minus the side margin), so face and pips line up. */
+.die[data-shape="d6"][data-color^="skin-"]::before { inset: 2% 4% 6%; clip-path: none; background: var(--face) center / contain no-repeat; }
+.die[data-shape="d6"][data-color^="skin-"] .pips {
+  inset: 2% 4% 6%; background: var(--pips) center / contain no-repeat;
+  --p0: radial-gradient(13% 13% at 24% 24%, #000 80%, #0000); --p2: radial-gradient(13% 13% at 76% 24%, #000 80%, #0000);
+  --p3: radial-gradient(13% 13% at 24% 50%, #000 80%, #0000); --p4: radial-gradient(13% 13% at 50% 50%, #000 80%, #0000);
+  --p5: radial-gradient(13% 13% at 76% 50%, #000 80%, #0000); --p6: radial-gradient(13% 13% at 24% 76%, #000 80%, #0000);
+  --p8: radial-gradient(13% 13% at 76% 76%, #000 80%, #0000);
+  -webkit-mask-image: var(--m); mask-image: var(--m);
+}
+.die[data-shape="d6"][data-color^="skin-"] .pips i { visibility: hidden; }
+/* Rattle on phone shake; staggered phases so they don't all wobble in sync. */
+.die.rattle { animation: rattle .09s infinite alternate ease-in-out; }
+.die.rattle:nth-child(2n) { animation-duration: .075s; animation-direction: alternate-reverse; }
+.die.rattle:nth-child(3n) { animation-duration: .105s; }
+@keyframes rattle {
+  from { transform: translate(-3px, 2px) rotate(-7deg); }
+  to { transform: translate(3px, -2px) rotate(7deg); }
+}
+.rolling.classic #dice .die:not(.ghost) { animation: wob .12s infinite alternate; }
+@keyframes wob {
+  from { transform: rotate(-9deg) scale(.96); }
+  to { transform: rotate(9deg) scale(1.02); }
+}
+@media (prefers-reduced-motion: reduce) { .die.rattle { animation: none; } }
+/* Lift on tap; while dragging the die follows the finger without delay. */
+.die.held {
+  z-index: 1;
+  transform: scale(1.08) translateY(-2px); box-shadow: 0 14px 30px #000a;
+  transition: transform .12s ease-out, box-shadow .12s ease-out;
+}
+.die.drag { box-shadow: 0 14px 30px #000a; cursor: grabbing; transition: none; }
+.die[data-shape].held, .die[data-shape].drag { box-shadow: none; }
+.die[data-shape].held, .die[data-shape].drag { filter: drop-shadow(.3rem .75rem .55rem #000a); }
+.die[data-shape].drag { transition: none; }
+
+#bottomtrays { position: relative; }
+#total, .tray-total { font-size: 1.2rem; font-variant-numeric: tabular-nums; pointer-events: none; }
+#total { position: absolute; right: .7rem; bottom: calc(100% + .3rem); z-index: 2; color: var(--muted); }
+#actions { order: 4; display: flex; gap: var(--surface-gap); }
+#actions button {
+  min-height: 4rem; padding: 1rem 1.1rem;
+  font: inherit; font-size: 1.25rem; font-weight: 700;
+  border-radius: 1rem; cursor: pointer;
+}
+#reset { flex: none; font-size: 1rem; background: var(--card); color: var(--fg); border: 2px solid var(--border); }
+#roll { flex: 1; display: flex; align-items: center; justify-content: center; gap: .55rem; background: var(--accent); color: var(--accent-fg); border: 0; }
+#roll:disabled { opacity: .7; }
+/* During the roll the cup stays solid; the new total appears when the dice are thrown out. */
+.rolling #roll:disabled { opacity: 1; }
+/* Flight to the side cup may cross the table boundary; body prevents scrollbars. */
+.rolling #dice { overflow: visible; z-index: 1; }
+.sum-pending #total { visibility: hidden; }
+#actions button:active { transform: scale(.98); }
+
+/* Settings */
+dialog {
+  width: min(32rem, calc(100% - 1rem)); max-height: 92dvh; padding: 0;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 1.2rem;
+  overscroll-behavior: contain;
+}
+dialog.screen {
+  inset: 0; width: 100%; max-width: none; height: var(--app-height, 100dvh); max-height: none; margin: 0;
+  border: 0; border-radius: 0; overflow-y: auto;
+}
+dialog::backdrop { background: #000a; }
+dialog > div { padding: 0 1rem calc(1.2rem + env(safe-area-inset-bottom)); }
+dialog.screen > div {
+  width: min(100%, 32rem); min-height: 100%; margin: 0 auto;
+  padding-right: max(1rem, env(safe-area-inset-right)); padding-left: max(1rem, env(safe-area-inset-left));
+}
+dialog .head {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; justify-content: space-between; align-items: center; gap: .55rem;
+  padding: .8rem 0; background: var(--bg);
+}
+dialog.screen .head { padding-top: max(.8rem, env(safe-area-inset-top)); }
+dialog.screen .head h2 { margin-right: auto; }
+dialog h2 { margin: 0; font-size: 1.3rem; }
+dialog h3 { font-size: 1rem; margin: 1.2rem 0 .55rem; display: flex; gap: .5rem; align-items: baseline; }
+dialog h3 small { color: var(--muted); font-weight: 400; font-size: .85rem; }
+/* All controls at least 48 px tall; inputs ≥16 px font (otherwise iOS zooms). */
+dialog button, dialog input, dialog select {
+  min-height: 3rem; font: inherit; font-size: 1.05rem; color: var(--fg);
+  background: var(--card); border: 1px solid var(--border); border-radius: .8rem;
+  padding: .5rem .6rem; cursor: pointer; white-space: nowrap;
+}
+dialog button:active { transform: scale(.97); }
+dialog button { display: flex; align-items: center; justify-content: center; gap: .35rem; }
+/* Die icons as masks: color follows the text (dark/light). */
+.ico { flex: none; width: 1.4rem; height: 1.4rem; background: currentColor; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.ico.d6 { -webkit-mask-image: url(icons/d6.svg); mask-image: url(icons/d6.svg); }
+.ico.cup { width: 1.6rem; height: 1.6rem; -webkit-mask-image: url(icons/cup.svg); mask-image: url(icons/cup.svg); }
+.ico.volume { -webkit-mask-image: url(icons/volume.svg); mask-image: url(icons/volume.svg); }
+.ico.volume-off { -webkit-mask-image: url(icons/volume-off.svg); mask-image: url(icons/volume-off.svg); }
+.head button { width: 3rem; padding: 0; font-size: 1.3rem; }
+.head .back { font-size: 1.7rem; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+#animation, #sound, #surface, #language { grid-template-columns: repeat(2, 1fr); }
+.flag { font-size: 1.3rem; line-height: 1; }
+.grid button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
+/* Table selection with preview: pre-generated 384 px thumbnails, not the full textures. */
+#surface button { flex-direction: column; gap: .4rem; padding: .4rem .4rem .5rem; }
+#surface .thumb { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: .5rem; background: var(--bg); border: 1px solid var(--border); }
+
+/* Dice in dialogs: same look as on the table, just smaller. */
+dialog button.die { display: grid; appearance: none; min-height: 0; padding: 0; border: 0; background: var(--die); color: var(--pip); cursor: pointer; touch-action: manipulation; }
+.dicegrid { display: flex; flex-wrap: wrap; gap: .7rem; }
+.dicegrid .die { width: 3.4rem; }
+.dicegrid .die .num, .die-types .die .num { font-size: 1.35rem; }
+.dicegrid .die small, .minis .die small { font-size: .5rem; bottom: var(--type-bottom, 3%); }
+dialog button.primary {
+  background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700;
+}
+
+/* Set list scrolls independently so saving the current setup stays visible. */
+#quickdlg > div, #add-die > div { height: 100%; display: flex; flex-direction: column; }
+#sets { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-auto-rows: max-content; align-content: start; gap: .7rem; padding-bottom: .6rem; }
+.screen-footer { flex: none; padding-bottom: env(safe-area-inset-bottom); background: var(--bg); }
+.screen-footer h3 { margin-top: .6rem; }
+#edit-sets { margin-left: auto; width: auto; padding: 0 .8rem; font-size: 1.05rem; }
+dialog .preset { flex-direction: column; align-items: flex-start; gap: .55rem; width: 100%; padding: .85rem; font-weight: 700; }
+.own { display: flex; gap: .5rem; }
+.own .preset { min-width: 0; }
+.own .remove { flex: none; width: 3rem; padding: 0; }
+/* Delete: trash can and warning color. */
+dialog button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, transparent); background: color-mix(in srgb, var(--danger) 10%, var(--card)); }
+.ico.trash { -webkit-mask-image: url(icons/trash.svg); mask-image: url(icons/trash.svg); }
+.line input#set-name { text-align: left; }
+.minis { display: flex; flex-wrap: wrap; gap: .45rem; }
+.minis .die { width: 2.6rem; cursor: inherit; touch-action: manipulation; }
+.minis .die .num { font-size: 1.05rem; }
+.line { display: flex; gap: .6rem; align-items: center; margin-top: .6rem; }
+.line label { color: var(--muted); }
+.line input { flex: 1; min-width: 0; text-align: center; cursor: text; }
+.die-type { flex: 1; min-width: 0; }
+.wide { width: 100%; margin-top: .6rem; }
+#add-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.add-fields { flex: 1; min-height: 0; overflow-y: auto; padding: 0 .2rem .8rem; }
+.die-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
+.die-types button { min-width: 0; flex-direction: column; white-space: normal; font-size: .85rem; }
+.die-types .die { width: 3rem; }
+.die-types button[aria-pressed="true"] { border-color: var(--accent); outline: 2px solid var(--accent); font-weight: 700; }
+.add-action { flex: none; min-height: 3.8rem; margin: .8rem 0 0; font-size: 1.2rem; }
+#history { margin: 0; padding-left: 1.6rem; max-height: 10rem; overflow-y: auto; color: var(--muted); }
+#history:empty { display: none; }
+.hint { color: var(--muted); font-size: .85rem; margin: 1.2rem 0 0; }
+#click-mode { width: 100%; margin-top: .6rem; }
+#position button, #order button { white-space: normal; }
+#order { grid-template-columns: repeat(2, 1fr); }
+/* Colors flow with the width; tiles shrink down to 44 px so narrow phones still fit 5 per row. */
+.palette { gap: .5rem; padding: .25rem; }
+.palette .die { width: clamp(2.75rem, calc((100% - 2rem) / 5), 3.4rem); }
+.palette .die[data-color^="skin-"] { background: var(--face) center / contain no-repeat; }
+.palette .die[aria-pressed="true"] { outline: 3px solid var(--tray-label); outline-offset: 2px; }
+.palette .die[aria-pressed="true"]::after { content: "✓"; font-size: 1.6rem; font-weight: 700; }
+dialog button:disabled { opacity: .5; cursor: default; }
+
+/* When rotating back, full trays must not push the cup off screen. */
+@media (orientation: portrait) and (max-height: 650px) {
+  main { --tray-die-size: 2.75rem; }
+  .tray { max-height: 5.2rem; }
+}
+
+/* Landscape: the same trays and buttons in a right-hand sidebar. */
+@media (orientation: landscape) {
+  main {
+    --tray-die-size: 2.75rem;
+    display: grid; max-width: none;
+    grid-template-columns: minmax(0, 1fr) clamp(13rem, 30vw, 20rem);
+    grid-template-rows: auto minmax(0, 1fr); gap: var(--surface-gap);
+  }
+  header { grid-column: 1 / -1; margin-bottom: 0; }
+  header button { min-height: 2.75rem; padding: 0 .8rem; font-size: 1rem; }
+  #open { width: 2.75rem; }
+  #dice { grid-column: 1; grid-row: 2; min-width: 0; margin-bottom: 0; gap: .75rem; padding: .4rem; }
+  #controls { grid-column: 2; grid-row: 2; position: relative; display: flex; flex-direction: column; gap: var(--surface-gap); min-height: 0; min-width: 0; }
+  #trayarea {
+    flex: 1; min-height: 0; display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(0, 1fr); gap: var(--surface-gap);
+  }
+  #toptrays, #bottomtrays { display: contents; }
+  .tray { min-height: 0; max-height: none; padding: .4rem; gap: .35rem; }
+  #total { bottom: 4rem; right: .5rem; }
+  #actions { flex: none; }
+  #actions button { min-height: 3.5rem; padding: .5rem .6rem; font-size: 1rem; }
+  #reset { padding: .5rem; }
+}
