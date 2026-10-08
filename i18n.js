@@ -233,9 +233,8 @@ export function diceName(sides) {
 export function localize(doc) {
   doc.documentElement.lang = language;
   if (language === 'en') return;
-  doc.title = t(doc.title);
   doc.querySelector('link[rel="manifest"]').href = `manifest.${language}.webmanifest`;
-  for (const meta of doc.querySelectorAll('meta[name="description"], meta[name="apple-mobile-web-app-title"]')) meta.content = t(meta.content);
+  for (const meta of doc.querySelectorAll('meta[name="description"]')) meta.content = t(meta.content);
   const walker = doc.createTreeWalker(doc.body, 4); // SHOW_TEXT; leaves icons and nested labels intact.
   while (walker.nextNode()) {
     const node = walker.currentNode;

@@ -1,6 +1,6 @@
 {
-  "name": "Würfel",
-  "short_name": "Würfel",
+  "name": "HandyDice",
+  "short_name": "HandyDice",
   "description": "Kostenlos würfeln: W4–W100, offline, ohne Werbung und ohne Tracker.",
   "lang": "de",
   "start_url": "./",

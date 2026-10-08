@@ -30,8 +30,7 @@ const decode = s => s.replaceAll('&amp;', '&');
 const texts = [
   ...[...body.matchAll(/>([^<>]+)</g)].map(m => decode(m[1].trim())).filter(s => /\p{L}/u.test(s)),
   ...[...body.matchAll(/aria-label="([^"]+)"/g)].map(m => decode(m[1])),
-  ...[...html.matchAll(/<meta name="(?:description|apple-mobile-web-app-title)" content="([^"]+)"/g)].map(m => decode(m[1])),
-  html.match(/<title>([^<]+)<\/title>/)[1],
+  ...[...html.matchAll(/<meta name="description" content="([^"]+)"/g)].map(m => decode(m[1])),
   ...['app.js', 'i18n.js'].flatMap(file => [...read(file).matchAll(/\bt\((['"])(.+?)\1\)/g)].map(m => m[2])),
 ];
 const ownLanguage = new Set(['English', 'Deutsch', 'Français']); // language names stay in their own language
