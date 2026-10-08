@@ -38,7 +38,8 @@ the one we wanted for our own game nights:
 - **5 table surfaces:** casino felt, oak, crafts, blue wood, terracotta. Light, dark or automatic theme.
 - **Feels like real dice:** a dice cup animation with sound, or spinning dice. Shake your phone to roll.
 - **Accessible:** full keyboard control, an optional two-tap mode instead of dragging, respects reduced motion.
-- **English, German and French**, following your browser or chosen manually.
+- **8 languages:** English, German, French, Spanish, Portuguese (Brazil), Italian, Dutch and Polish, following
+  your browser or chosen manually.
 - **Remembers your round:** dice, trays, sets and the last 30 results survive a reload.
 
 <p align="center">
@@ -76,7 +77,7 @@ the Roll button must not. The button uses pointer release because mobile long pr
 | `app.js` | UI wiring: rendering, tap/drag/keyboard input, roll animation, dialogs, settings, shake |
 | `dice.js` | Pure dice rules: unbiased rolls, trays, table slots |
 | `state.js` | Load and validate saved state; storage keys |
-| `i18n.js` | Language choice, German and French translations, DOM localization |
+| `i18n.js` | Language choice, translations, DOM localization |
 | `layout.js` | Largest dice size that fits the table |
 | `sound.js` | Preloaded Web Audio effects |
 | `viewport.js` | App height, including the iOS PWA full-screen workaround |

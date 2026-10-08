@@ -1,9 +1,10 @@
 // Bump on every release so installed clients precache the new files; sw.test.mjs checks ASSETS.
-const CACHE = 'handydice-v2';
+const CACHE = 'handydice-v3';
 const ASSETS = [
   './', './index.html', './style.css',
   './app.js', './dice.js', './i18n.js', './layout.js', './sound.js', './state.js', './viewport.js',
-  './manifest.de.webmanifest', './manifest.en.webmanifest', './manifest.fr.webmanifest', './icon.svg', './icon-192.png', './icon-512.png',
+  './manifest.de.webmanifest', './manifest.en.webmanifest', './manifest.fr.webmanifest', './manifest.es.webmanifest', './manifest.pt.webmanifest',
+  './manifest.it.webmanifest', './manifest.nl.webmanifest', './manifest.pl.webmanifest', './icon.svg', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './icon-maskable-512.png',
   './icons/cup.svg', './icons/d6.svg', './icons/d12-facets.svg', './icons/d12-shading.svg', './icons/d20-facets.svg', './icons/d20-shading.svg', './icons/dx.svg', './icons/trash.svg', './icons/volume.svg', './icons/volume-off.svg',
   './backgrounds/thumbs/casino.webp', './backgrounds/thumbs/oak.webp', './backgrounds/thumbs/crafts.webp',

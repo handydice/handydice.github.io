@@ -5,17 +5,18 @@ import { LANGUAGES, chooseLanguage, diceName, dieType, translations } from './i1
 assert.equal(chooseLanguage(['de-DE', 'en-US']), 'de');
 assert.equal(chooseLanguage(['de-CH']), 'de');
 assert.equal(chooseLanguage(['en-GB', 'de']), 'en');
-assert.equal(chooseLanguage(['it-IT', 'de-AT']), 'de', 'unsupported languages are skipped');
+assert.equal(chooseLanguage(['sv-SE', 'de-AT']), 'de', 'unsupported languages are skipped');
 assert.equal(chooseLanguage(['fr', 'en', 'de']), 'fr');
 assert.equal(chooseLanguage(['DE-at']), 'de');
-assert.equal(chooseLanguage(['es-ES']), 'en');
+assert.equal(chooseLanguage(['sv-SE']), 'en');
 assert.equal(chooseLanguage([]), 'en');
 assert.equal(chooseLanguage(['en-US'], 'de'), 'de', 'manual German overrides the browser');
 assert.equal(chooseLanguage(['de-DE'], 'en'), 'en', 'manual English overrides the browser');
 assert.equal(chooseLanguage(['de-DE'], 'fr'), 'fr', 'manual French overrides the browser');
 assert.equal(chooseLanguage(['de-DE'], 'auto'), 'de');
 assert.equal(chooseLanguage(['fr-CA', 'de']), 'fr');
-assert.equal(chooseLanguage(['it', 'fr-BE']), 'fr');
+assert.equal(chooseLanguage(['ja', 'fr-BE']), 'fr');
+assert.equal(chooseLanguage(['pt-PT']), 'pt', 'Portugal gets the Brazilian table');
 assert.equal(chooseLanguage(['en-US'], 'invalid'), 'en');
 
 assert.equal(diceName([6, 6, 20, 6]), `3×${dieType(6)} · ${dieType(20)}`);
@@ -33,7 +34,7 @@ const texts = [
   ...[...html.matchAll(/<meta name="description" content="([^"]+)"/g)].map(m => decode(m[1])),
   ...['app.js', 'i18n.js'].flatMap(file => [...read(file).matchAll(/\bt\((['"])(.+?)\1\)/g)].map(m => m[2])),
 ];
-const ownLanguage = new Set(['English', 'Deutsch', 'Français']); // language names stay in their own language
+const ownLanguage = new Set(['English', 'Deutsch', 'Français', 'Español', 'Português', 'Italiano', 'Nederlands', 'Polski']); // language names stay in their own language
 for (const lang of LANGUAGES.filter(lang => lang !== 'en')) {
   const missing = [...new Set(texts)].filter(text => !ownLanguage.has(text) && !Object.hasOwn(translations[lang], text));
   assert.deepEqual(missing, [], `missing ${lang} translations`);
