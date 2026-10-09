@@ -46,7 +46,7 @@ the one we wanted for our own game nights:
 - **Remembers your round:** dice, trays and sets survive a reload.
 
 <p align="center">
-  <img src="screenshots/add-die.webp" width="24%" alt="Add die screen with die types and the color and skin palette">
+  <img src="screenshots/dice.webp" width="24%" alt="Dice screen: dice on the table, color and skin row, die types and sets">
   <img src="screenshots/settings.webp" width="24%" alt="Settings with sound, theme and table surface choices">
 </p>
 
