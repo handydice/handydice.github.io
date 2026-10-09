@@ -78,8 +78,13 @@ async function startScene() {
   catch (error) { showRenderError(error); return; }
   scene.onError = showRenderError;
   scene.onImpact = (type, speed) => { if (state.sound) playImpact(type, speed); };
+  const debug = new URLSearchParams(location.search).has('debug');
   let lastFlickDie = null;
-  if (new URLSearchParams(location.search).has('debug')) scene.onFlickRandomize = (die, triggered) => {
+  // A flick fast enough for a crypto reroll is a real throw: lock the roll button like a roll until it settles.
+  // A plain tip-over leaves the button alone.
+  scene.onFlickRandomize = (die, triggered) => {
+    if (triggered) $('#roll').disabled = true;
+    if (!debug) return;
     if (!triggered) lastFlickDie = die;
     if (die !== lastFlickDie) return;
     flickDebug.textContent = `Last flick · D${die.sides} · Crypto: ${triggered ? 'YES' : 'NO'}`;
@@ -87,6 +92,7 @@ async function startScene() {
     flickDebug.hidden = false;
   };
   scene.onSettle = () => {
+    $('#roll').disabled = rolling;
     const focusedDie = document.activeElement?.die;
     commit();
     if (focusedDie) elsOf([focusedDie])[0]?.focus();
@@ -105,6 +111,7 @@ function stopScene() {
   canvas = null;
   renderError.hidden = true;
   flickDebug.hidden = true;
+  $('#roll').disabled = rolling;
 }
 const trayEls = [...document.querySelectorAll('.tray')];
 // Every drop zone carries its tray in data-tray; '' is the table.
@@ -410,15 +417,15 @@ function pointerDrag(el) {
       marker.remove();
       if (target && target !== tableEl) target.firstElementChild.insertBefore(marker, trayTarget(target, d, lastX, lastY) ?? null);
     };
-    let rotate = start.shiftKey || start.button === 2;
-    let secondPointer = null;
+    const rotate = start.shiftKey || start.button === 2;
+    let secondPointer = null, spinX = 0, spinY = 0; // second finger's last position: its own deltas spin the die
     el.classList.add('held'); // lift as soon as the finger is on it
     const holdTimer = start.button === 0 ? setTimeout(() => { cancelDrag?.(); openDie(d); }, 550) : null;
     // 3D: a second finger rotates the gripped die.
     const extraDown = ev => {
       if (ev.pointerId === start.pointerId) return;
       secondPointer = ev.pointerId;
-      rotate = true;
+      spinX = ev.clientX; spinY = ev.clientY;
       clearTimeout(holdTimer);
     };
     const move = ev => {
@@ -443,12 +450,16 @@ function pointerDrag(el) {
       const target = dropTargetAt(ev.clientX, ev.clientY);
       const tray = target === tableEl ? undefined : target;
       if (flat) el.style.transform = `translate(${dx}px, ${dy}px) scale(${tray ? small : 1.08})`;
-      else scene?.moveGrip(ev.clientX, ev.clientY, ev.clientX - lastX, ev.clientY - lastY, rotate || ev.shiftKey);
+      else if (ev.pointerId === secondPointer) {
+        scene?.moveGrip(lastX, lastY, ev.clientX - spinX, ev.clientY - spinY, true);
+        spinX = ev.clientX; spinY = ev.clientY;
+        return;
+      } else scene?.moveGrip(ev.clientX, ev.clientY, ev.clientX - lastX, ev.clientY - lastY, rotate || ev.shiftKey);
       lastX = ev.clientX; lastY = ev.clientY;
       if (hintsVisible) showHints();
     };
     const up = ev => {
-      if (ev.pointerId === secondPointer) { secondPointer = null; rotate = start.shiftKey || start.button === 2; return; }
+      if (ev.pointerId === secondPointer) { secondPointer = null; return; }
       if (ev.pointerId !== start.pointerId) return;
       clearTimeout(holdTimer);
       clearTimeout(hintTimer);

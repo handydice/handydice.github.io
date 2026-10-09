@@ -21,7 +21,8 @@ const displayedValue = body => {
 const restoreValue = (body, value) => orientValue(body, body.faceValues ? body.faceValues.indexOf(value) + 1 : value);
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 // Tune on real phones: gentle translation in world units/s; fast tumbling in radians/s.
-const MOVE_SPEED = 2, FLICK_SPEED = 20, MAX_FLICK_SPIN = 18, RANDOMIZE_SPIN = 16;
+// SPIN_DECAY: per-second exponential slowdown of a finger spin on a held die (0.7 ≈ half speed per second).
+const MOVE_SPEED = 2, FLICK_SPEED = 20, MAX_FLICK_SPIN = 18, RANDOMIZE_SPIN = 16, SPIN_DECAY = 0.7;
 const TILT_DEADBAND = 0.01, MIN_TILT_NORMAL = Math.cos(75 * Math.PI / 180);
 const renumber = body => {
   body.faceValues = randomFaceValues(body.shape.sides);
@@ -206,7 +207,8 @@ export class DiceScene {
     this.raf = 0;
     const dt = this.lastTime ? Math.min(0.05, (time - this.lastTime) / 1000) : 1 / 60;
     this.lastTime = time;
-    if (this.grip && time - this.grip.lastMotion > 80) this.grip.body.held.ang.fill(0);
+    // A finger spin coasts and slows gradually, so the die can be dropped while still spinning.
+    if (this.grip) { const k = Math.exp(-SPIN_DECAY * dt), a = this.grip.body.held.ang; a[0] *= k; a[1] *= k; a[2] *= k; }
     if (this.grip && !this.grip.rotated) {
       const { body } = this.grip, q = body.quat, target = body.held.quat;
       const blend = 1 - Math.exp(-12 * dt);
@@ -389,9 +391,11 @@ export class DiceScene {
     if (rotate) {
       this.grip.vx = this.grip.vz = 0;
       if (dx || dy) this.grip.rotated = true;
-      body.held.ang[0] = clamp(dy * 0.3, -24, 24);
-      body.held.ang[1] = clamp(dx * 0.3, -24, 24);
-    } else body.held.ang.fill(0);
+      // Faster strokes speed the spin up; slower ones or a pause never brake it. A reverse stroke brakes by its own size.
+      const a = body.held.ang, push = (cur, next) => next * cur < 0 ? cur + next : Math.abs(next) > Math.abs(cur) ? next : cur;
+      a[0] = push(a[0], clamp(dy * 0.3, -24, 24));
+      a[1] = push(a[1], clamp(dx * 0.3, -24, 24));
+    }
     this.refreshEntries(); this.invalidate();
   }
 
