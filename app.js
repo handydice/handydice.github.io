@@ -1,7 +1,7 @@
-import { MAX_DICE, assignSlots, compactSlots, putAside, roll, rollable, setSides, shuffle, total } from './dice.js';
+import { MAX_DICE, assignSlots, compactSlots, putAside, roll, rollable, shuffle, total } from './dice.js';
 import { LANGUAGE_KEY, diceName, dieType, languagePreference, localize, t } from './i18n.js';
 import { fitDice } from './layout.js';
-import { HISTORY_LIMIT, STATE_KEY, THEME_KEY, loadState, saveState } from './state.js';
+import { STATE_KEY, THEME_KEY, loadState, saveState } from './state.js';
 import { loadSounds, playImpact, playSound, resumeSounds } from './sound.js';
 import { watchViewport } from './viewport.js';
 
@@ -116,13 +116,13 @@ function stopScene() {
 const trayEls = [...document.querySelectorAll('.tray')];
 // Every drop zone carries its tray in data-tray; '' is the table.
 const dropZones = [tableEl, ...trayEls];
-const settings = $('#settings'), quick = $('#quickdlg'), editor = $('#die-settings'), creator = $('#add-die');
+const settings = $('#settings'), bag = $('#bag');
 
 const { state, restored } = loadState(localStorage.getItem(STATE_KEY), [...$('#surface').children].map(b => b.dataset.surface));
 let rolling = false;
 let selected = null; // die chosen in two-tap mode
 let cancelDrag = null; // ends the running pointer or keyboard drag
-let editing = null, adding = null; // dice shown in the edit and add dialogs
+let bagColor = 'white', justAdded = null; // dice bag: color for the next die, the die that just arrived
 let editingSets = false;
 
 for (const tray of trayEls) tray.firstElementChild.dataset.label = tray.dataset.tray === 't1' ? t('Top tray') : t('Bottom tray');
@@ -174,7 +174,7 @@ function face(d) {
 const typeFace = (sides, numbered = false) => sides === 6 && !numbered ? face({ sides, value: 5 }) : `<span class="num">${sides}</span><small>${dieType(sides)}</small>`;
 const sidesFace = (sides, numbered = false) => sides === 6 && !numbered ? typeFace(sides) : `<span class="num">${sides}</span>`;
 const shapeOf = sides => `d${sides}`;
-const typeKey = d => d.sides === 6 && d.numbered ? '6-number' : String(d.sides);
+const dieLabel = d => `${d.color ? COLOR_NAMES[d.color] + ' ' : ''}${dieType(d.sides)}${d.sides === 6 ? ` ${t(d.numbered ? 'Number' : 'Pips')}` : ''}`;
 
 function dieEl(d) {
   const flat = state.view === '2d';
@@ -186,9 +186,8 @@ function dieEl(d) {
   el.setAttribute('role', 'button');
   el.dataset.color = d.color ?? '';
   if (flat) el.dataset.shape = shapeOf(d.sides);
-  const action = state.clickMode === 'edit' ? t('edit') : state.clickMode === 'select' ? t('select') : d.tray ? t('return to table') : t('move to tray');
-  const display = d.sides === 6 ? ` ${t(d.numbered ? 'Number' : 'Pips')}` : '';
-  el.setAttribute('aria-label', `${d.color ? COLOR_NAMES[d.color] + ' ' : ''}${dieType(d.sides)}${display}: ${d.value}, ${action}`);
+  const action = state.clickMode === 'select' ? t('select') : d.tray ? t('return to table') : t('move to tray');
+  el.setAttribute('aria-label', `${dieLabel(d)}: ${d.value}, ${action}`);
   el.setAttribute('aria-describedby', flat ? 'drag-help' : 'drag-help rotate-help');
   el.setAttribute('aria-pressed', d === selected);
   if (flat) el.innerHTML = face(d);
@@ -197,8 +196,7 @@ function dieEl(d) {
     // Screen readers can click without a pointer sequence; pointer taps are handled in pointerDrag.
     if (e.detail === 0 && !rolling) tapDie(d);
   };
-  // 3D opens the editor from the right button in pointerDrag; there it also rotates.
-  el.oncontextmenu = e => { e.preventDefault(); if (flat) openDie(d); };
+  el.oncontextmenu = e => e.preventDefault();
   keyboardDrag(el, d);
   pointerDrag(el);
   return el;
@@ -235,8 +233,7 @@ function render() {
   $('#total').textContent = onTable.length ? `Σ ${total(onTable)}${state.rerolls ? ` #${state.rerolls + 1}` : ''}` : '';
   $('#roll-label').textContent = state.dice.length && !onTable.length ? t('Reroll all dice') : t('Roll');
   $('#reset').hidden = onTable.length === state.dice.length;
-  $('#new-die').disabled = rolling || state.dice.length >= MAX_DICE;
-  $('#history').replaceChildren(...state.history.map(h => Object.assign(document.createElement('li'), { textContent: h })));
+  $('#bag-open').disabled = rolling;
   if (state.view === '2d') fitTable();
   else scene?.sync(state.dice, new Map(elsOf(state.dice).map(el => [el.die, el])), state.surface, document.documentElement.dataset.theme);
 }
@@ -287,10 +284,6 @@ function dropSelected(tray, before) {
 }
 
 function tapDie(d) {
-  if (state.clickMode === 'edit') {
-    openDie(d);
-    return;
-  }
   sound('click');
   if (state.clickMode === 'direct') {
     moveTo(d, d.tray ? '' : state.lastTray ?? 'b1');
@@ -319,11 +312,6 @@ function keyboardDrag(el, d) {
   let grabbed = false, target;
   el.onkeydown = e => {
     const confirm = e.key === 'Enter' || e.key === ' ';
-    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10') || (!grabbed && confirm && state.clickMode === 'edit')) {
-      e.preventDefault();
-      openDie(d);
-      return;
-    }
     if (rolling || (cancelDrag && !grabbed)) return;
     if (state.view === '3d' && grabbed && e.shiftKey && e.key.startsWith('Arrow')) {
       e.preventDefault();
@@ -392,7 +380,7 @@ const trayTarget = (tray, d, x, y) => [...tray.firstElementChild.children].find(
   return y < r.top || (y <= r.bottom && x < r.left + r.width / 2);
 });
 
-// Tap, long press and drag share the pointer. A tap with a slight swipe stays a tap: dragging starts
+// Tap and drag share the pointer. A tap with a slight swipe stays a tap: dragging starts
 // beyond DRAG_SLOP, and within the first DRAG_DELAY_MS only beyond DRAG_FAST_SLOP (a deliberate flick).
 const DRAG_SLOP = 12, DRAG_FAST_SLOP = 30, DRAG_DELAY_MS = 150, DRAG_HINT_DELAY_MS = 200;
 function pointerDrag(el) {
@@ -420,13 +408,11 @@ function pointerDrag(el) {
     const rotate = start.shiftKey || start.button === 2;
     let secondPointer = null, spinX = 0, spinY = 0; // second finger's last position: its own deltas spin the die
     el.classList.add('held'); // lift as soon as the finger is on it
-    const holdTimer = start.button === 0 ? setTimeout(() => { cancelDrag?.(); openDie(d); }, 550) : null;
     // 3D: a second finger rotates the gripped die.
     const extraDown = ev => {
       if (ev.pointerId === start.pointerId) return;
       secondPointer = ev.pointerId;
       spinX = ev.clientX; spinY = ev.clientY;
-      clearTimeout(holdTimer);
     };
     const move = ev => {
       if (ev.pointerId !== start.pointerId && ev.pointerId !== secondPointer) return;
@@ -434,7 +420,6 @@ function pointerDrag(el) {
       const dist = Math.hypot(dx, dy);
       const threshold = performance.now() - started < DRAG_DELAY_MS ? DRAG_FAST_SLOP : DRAG_SLOP;
       if (!moved && dist < threshold && secondPointer === null) return;
-      clearTimeout(holdTimer);
       if (!moved) {
         moved = true;
         cancelSelection();
@@ -461,7 +446,6 @@ function pointerDrag(el) {
     const up = ev => {
       if (ev.pointerId === secondPointer) { secondPointer = null; return; }
       if (ev.pointerId !== start.pointerId) return;
-      clearTimeout(holdTimer);
       clearTimeout(hintTimer);
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', up);
@@ -472,7 +456,6 @@ function pointerDrag(el) {
       el.classList.remove('held');
       if (!moved) {
         if (ev.type === 'pointerup' && start.button === 0) tapDie(d);
-        else if (ev.type === 'pointerup' && start.button === 2) openDie(d);
         return;
       }
       const target = ev.type === 'pointerup' ? dropTargetAt(ev.clientX, ev.clientY) : null;
@@ -496,8 +479,8 @@ const toButton = el => {
 };
 const tumble = () => `rotate(${Math.round((Math.random() - .5) * 720)}deg)`; // cosmetic only
 
-// One roll for both views and every trigger (button, keyboard, long press, shake): same rules, sounds
-// and one history row. 3D throws physically; scene3d.js maps the landed faces to crypto rolls.
+// One roll for both views and every trigger (button, keyboard, long press, shake): same rules and
+// sounds. 3D throws physically; scene3d.js maps the landed faces to crypto rolls.
 // shaken: the phone was shaken – the dice already rattled on the table, so no cup button.
 async function doRoll(shaken = false) {
   const flat = state.view === '2d';
@@ -505,7 +488,7 @@ async function doRoll(shaken = false) {
   interrupt();
   rolling = true;
   $('#roll').disabled = true;
-  $('#new-die').disabled = true;
+  $('#bag-open').disabled = true;
   document.body.classList.add('rolling', 'sum-pending');
   // Everything in trays → all dice back to the table for a new round.
   const newRound = state.dice.every(d => d.tray);
@@ -552,10 +535,9 @@ async function doRoll(shaken = false) {
       render();
       flickDebug.hidden = true;
       await scene.throw(active, { calm });
-      if (scene.failed) return; // an aborted WebGL throw is not a completed history result
+      if (scene.failed) return; // an aborted WebGL throw is not a finished roll
     }
     navigator.vibrate?.(25);
-    state.history = [`${state.dice.map(d => d.value).join(' · ')} = ${total(state.dice)}`, ...state.history].slice(0, HISTORY_LIMIT);
   } finally {
     rolling = false;
     $('#roll').disabled = false;
@@ -590,175 +572,139 @@ $('#reset').onclick = () => {
 
 // Dialogs
 
-editor.onclick = e => { if (e.target === editor) editor.close(); };
 $('#open').onclick = () => {
   interrupt();
   settings.showModal();
 };
+
+// Dice bag: one screen to put dice on the table, take them back and lay out sets.
 const currentName = () => diceName(state.dice.map(d => d.sides));
-$('#quick').onclick = () => {
-  interrupt();
-  editingSets = false;
-  renderSets();
-  $('#set-name').value = currentName();
-  $('#save-set button').disabled = !state.dice.length;
-  quick.showModal();
-};
+const bagColors = $('#bag .palette'), bagTypes = $('#bag .die-types'), tableDice = $('#table-dice');
+function newDie(sides, color, numbered) {
+  const d = { sides, value: roll(sides), color: color || undefined };
+  if (sides === 6 && numbered) d.numbered = true;
+  return d;
+}
+const miniDie = (sides, color, numbered) => `<span class="die" data-shape="${shapeOf(sides)}" data-color="${color ?? ''}" aria-hidden="true">${typeFace(sides, numbered)}</span>`;
 
-$('#new-die').onclick = () => {
-  if (rolling || state.dice.length >= MAX_DICE) return;
-  interrupt();
-  adding = { sides: 6, color: 'white', value: roll(6) };
-  updatePicker(creator, adding);
-  creator.showModal();
-  creator.scrollTop = 0;
-};
-$('#add-form').onsubmit = e => {
-  e.preventDefault();
-  if (state.dice.length >= MAX_DICE || !e.currentTarget.reportValidity()) return;
-  state.dice.push(adding);
-  creator.close();
-  commit();
-};
-// Native close events can arrive after the dialog was opened again.
-creator.onclose = () => {
-  if (creator.open) return;
-  adding = null;
-  ($('#new-die').disabled ? $('#open') : $('#new-die')).focus();
-};
-
-function openDie(d) {
-  if (rolling) return;
+bagColors.replaceChildren(...Object.entries(COLOR_NAMES).map(([color, name]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'die';
+  b.dataset.color = color;
+  b.setAttribute('aria-label', name);
+  b.title = name;
+  return b;
+}));
+onPick(bagColors, 'color', color => {
+  bagColor = color;
+  renderBag();
+});
+bagTypes.replaceChildren(...TYPE_OPTIONS.map(option => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.option = option;
+  b.setAttribute('aria-label', `${t('Add')}: ${dieLabel(option)}`);
+  b.innerHTML = `<span class="die" data-shape="${shapeOf(option.sides)}" aria-hidden="true">${sidesFace(option.sides, option.numbered)}</span>`;
+  return b;
+}));
+bagTypes.onclick = e => {
+  const option = e.target.closest('button')?.option;
+  if (!option || state.dice.length >= MAX_DICE) return;
+  justAdded = newDie(option.sides, bagColor, option.numbered);
+  state.dice.push(justAdded);
   sound('click');
-  interrupt();
-  editing = d;
-  updateEditor();
-  if (!editor.open) editor.showModal();
-  editor.scrollTop = 0;
-}
+  commit();
+  renderBag();
+};
+// The row lists the dice in state order, so a button's index is its die's index.
+tableDice.onclick = e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const i = state.dice.indexOf(b.die);
+  state.dice.splice(i, 1);
+  sound('click');
+  commit();
+  renderBag();
+  (tableDice.children[i] ?? tableDice.children[i - 1] ?? bagTypes.firstElementChild).focus({ preventScroll: true });
+};
+$('#clear').onclick = () => {
+  state.dice = [];
+  sound('click');
+  commit();
+  renderBag();
+  bagTypes.firstElementChild.focus({ preventScroll: true });
+};
 
-function updateEditor() {
-  $('#die-title').textContent = `${t('Edit die')} · ${dieType(editing.sides)}`;
-  updatePicker(editor, editing);
-  markPressed($('#position'), 'tray', editing.tray ?? '');
-  $('#die-order').hidden = !editing.tray;
-  const peers = state.dice.filter(d => d.tray === editing.tray);
-  const i = peers.indexOf(editing);
-  for (const b of $('#order').children) b.disabled = !editing.tray || i + Number(b.dataset.step) < 0 || i + Number(b.dataset.step) >= peers.length;
-}
-
-function updatePicker(dialog, d) {
-  const type = dialog.querySelector('.die-type');
-  const types = dialog.querySelector('.die-types');
-  markPressed(dialog.querySelector('.palette'), 'color', d.color || 'white');
-  // The pressed type tile doubles as the current die: it wears the chosen color.
-  for (const el of dialog.querySelectorAll('.die-types .die')) el.dataset.color = d.color || 'white';
-  if (type) type.value = typeKey(d);
-  if (types) markPressed(types, 'type', typeKey(d));
-}
-
-// The add screen uses eight visual variants; editing keeps the compact native select.
-function setupPicker(dialog, getDie, onChange) {
-  const type = dialog.querySelector('.die-type'), types = dialog.querySelector('.die-types');
-  const chooseType = value => {
-    const d = getDie();
-    if (!d) return;
-    const sides = Number.parseInt(value, 10);
-    setSides(d, sides);
-    if (value === '6-number') d.numbered = true;
-    else if (sides === 6) delete d.numbered;
-    onChange();
-  };
-  if (type) {
-    type.innerHTML = TYPE_OPTIONS.map(option => {
-      const display = option.sides === 6 ? ` · ${option.numbered ? t('Number') : t('Pips')}` : '';
-      return `<option value="${typeKey(option)}">${dieType(option.sides)}${display}</option>`;
-    }).join('');
-    type.onchange = () => chooseType(type.value);
-  } else {
-    const buttons = TYPE_OPTIONS.map(option => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.dataset.type = typeKey(option);
-      const label = option.sides === 6 ? `${dieType(6)} · ${option.numbered ? t('Number') : t('Pips')}` : `${option.sides} ${t('sides')}`;
-      b.innerHTML = `<span class="die" data-shape="${shapeOf(option.sides)}" data-color="white" aria-hidden="true">${sidesFace(option.sides, option.numbered)}</span><span>${label}</span>`;
-      return b;
-    });
-    types.replaceChildren(...buttons);
-    types.onclick = e => {
-      const value = e.target.closest('button')?.dataset.type;
-      if (value !== undefined) chooseType(value);
-    };
-  }
-  dialog.querySelector('.palette').replaceChildren(...Object.entries(COLOR_NAMES).map(([color, name]) => {
+function renderBag() {
+  $('#table-count').textContent = `${state.dice.length}/${MAX_DICE}`;
+  tableDice.replaceChildren(...state.dice.map(d => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'die';
-    b.dataset.color = color;
-    b.setAttribute('aria-label', name);
-    b.title = name;
-    b.onclick = () => {
-      getDie().color = color;
-      onChange();
-    };
+    b.className = d === justAdded ? 'mini new' : 'mini';
+    b.die = d;
+    b.setAttribute('aria-label', `${dieLabel(d)}: ${t('remove')}`);
+    b.innerHTML = miniDie(d.sides, d.color, d.numbered);
     return b;
   }));
+  justAdded = null;
+  $('#clear').hidden = !state.dice.length;
+  $('#table-empty').hidden = state.dice.length > 0;
+  markPressed(bagColors, 'color', bagColor);
+  for (const b of bagTypes.children) {
+    b.disabled = state.dice.length >= MAX_DICE;
+    b.firstElementChild.dataset.color = bagColor;
+  }
+  renderSets();
 }
-setupPicker(editor, () => editing, () => { commit(); updateEditor(); });
-setupPicker(creator, () => adding, () => updatePicker(creator, adding));
+$('#bag-open').onclick = () => {
+  if (rolling) return;
+  interrupt();
+  editingSets = false;
+  $('#save-set').hidden = true;
+  renderBag();
+  bag.showModal();
+  bag.scrollTop = 0;
+};
+// Native close events can arrive after the dialog was opened again.
+bag.onclose = () => { if (!bag.open) $('#bag-open').focus(); };
 
-onPick($('#position'), 'tray', tray => {
-  if (tray === (editing.tray ?? '')) return;
-  moveTo(editing, tray);
-  commit();
-  updateEditor();
-});
-$('#order').onclick = e => {
-  const b = e.target.closest('button');
-  if (!b || b.disabled) return;
-  const peers = state.dice.filter(d => d.tray === editing.tray);
-  const i = peers.indexOf(editing);
-  moveTo(editing, editing.tray, peers[i + (Number(b.dataset.step) < 0 ? -1 : 2)]);
-  commit();
-  updateEditor();
-};
-$('#remove-die').onclick = () => {
-  state.dice.splice(state.dice.indexOf(editing), 1);
-  editor.close();
-  commit();
-};
-editor.onclose = () => {
-  if (editor.open) return;
-  const d = editing;
-  editing = null;
-  (elsOf([d])[0] ?? $('#new-die')).focus();
-};
-
-// Dice sets: own sets on top; the remove button only shows in edit mode.
+// Sets: a tap replaces the table and rolls. Own sets come first; edit mode shows their remove buttons.
 function presetEl(set) {
   const b = document.createElement('button');
+  b.type = 'button';
   b.className = 'preset';
-  b.innerHTML = `<span class="minis">${set.dice.map((s, i) => `<span class="die" data-shape="${shapeOf(s)}" data-color="${set.colors?.[i] ?? ''}">${typeFace(s, set.numbered?.[i])}</span>`).join('')}</span>`;
-  b.append(set.name);
+  b.innerHTML = `<span class="minis">${set.dice.map((s, i) => miniDie(s, set.colors?.[i], set.numbered?.[i])).join('')}</span><span class="name"></span>`;
+  b.lastChild.textContent = set.name;
   b.onclick = () => {
-    state.dice = set.dice.map((sides, i) => {
-      const d = { sides, value: roll(sides), color: set.colors?.[i] || undefined };
-      if (sides === 6 && set.numbered?.[i] === true) d.numbered = true;
-      return d;
-    });
-    quick.close();
+    state.dice = set.dice.map((sides, i) => newDie(sides, set.colors?.[i], set.numbered?.[i] === true));
+    bag.close();
     commit();
     doRoll();
   };
   return b;
 }
 function renderSets() {
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'preset save';
+  save.hidden = !state.dice.length;
+  save.innerHTML = '<span class="plus" aria-hidden="true">+</span><span class="name"></span>';
+  save.lastChild.textContent = t('Save');
+  save.setAttribute('aria-label', t('Save current dice'));
+  save.onclick = () => {
+    $('#save-set').hidden = false;
+    $('#set-name').value = currentName();
+    $('#set-name').focus();
+    $('#set-name').select();
+  };
   const own = state.sets.map(set => {
-    const row = document.createElement('div');
-    row.className = 'own';
+    const card = document.createElement('div');
+    card.className = 'own';
     const del = document.createElement('button');
-    del.className = 'remove danger';
-    del.innerHTML = '<i class="ico trash" aria-hidden="true"></i>';
+    del.type = 'button';
+    del.className = 'remove';
+    del.textContent = '×';
     del.setAttribute('aria-label', `${set.name}: ${t('remove')}`);
     del.hidden = !editingSets;
     del.onclick = () => {
@@ -766,12 +712,12 @@ function renderSets() {
       if (!state.sets.length) editingSets = false;
       saveState(state);
       renderSets();
-      (editingSets ? $('#edit-sets') : $('#set-name')).focus();
+      (editingSets ? $('#edit-sets') : save).focus();
     };
-    row.append(presetEl(set), del);
-    return row;
+    card.append(presetEl(set), del);
+    return card;
   });
-  $('#sets').replaceChildren(...own, ...SETS.map(presetEl));
+  $('#sets').replaceChildren(save, ...own, ...SETS.map(presetEl));
   $('#edit-sets').hidden = !state.sets.length;
   $('#edit-sets').textContent = editingSets ? t('Done') : t('Edit');
   $('#edit-sets').setAttribute('aria-pressed', editingSets);
@@ -788,9 +734,9 @@ $('#save-set').onsubmit = e => {
   if (numbered.some(Boolean)) set.numbered = numbered;
   state.sets.unshift(set);
   saveState(state);
+  $('#save-set').hidden = true;
   renderSets();
-  $('#set-name').value = currentName();
-  quick.scrollTop = 0;
+  $('#sets').scrollLeft = 0;
 };
 
 // Settings
@@ -851,10 +797,6 @@ onPick($('#language'), 'language', language => {
   localStorage.setItem(LANGUAGE_KEY, language);
   location.reload(); // rebuild all dynamic texts and install metadata in the same language
 });
-$('#clearhist').onclick = () => {
-  state.history = [];
-  commit();
-};
 
 // Install: Chrome on Android offers the app by itself; the button brings the offer back on request.
 // iOS has no beforeinstallprompt and stays with the share menu.

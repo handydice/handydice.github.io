@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { assignSlots, compactSlots, isSides, putAside, randomFaceValues, roll, rollable, setSides, shuffle, SIDES, total } from './dice.js';
+import { assignSlots, compactSlots, isSides, putAside, randomFaceValues, roll, rollable, shuffle, SIDES, total } from './dice.js';
 
 for (const sides of [2, 4, 6, 8, 10, 12, 20, 100, 7]) {
   const counts = new Array(sides + 1).fill(0);
@@ -32,17 +32,6 @@ putAside(dice, rolled, 't1', other);
 assert.deepEqual(dice, [first, rolled, other]);
 assert.equal(rolled.tray, 't1');
 assert.equal(rolled.value, 4, 'sorting and moving keeps the rolled value');
-
-const edited = { sides: 20, value: 19, tray: 't1', slot: 3, color: 'gray' };
-setSides(edited, 20);
-assert.deepEqual(edited, { sides: 20, value: 19, tray: 't1', slot: 3, color: 'gray' });
-setSides(edited, 6);
-const { value, ...rest } = edited;
-assert.deepEqual(rest, { sides: 6, tray: 't1', slot: 3, color: 'gray' }, 'a type change keeps tray, color and table slot');
-assert(value >= 1 && value <= 6, 'a type change lands the new die with a random face up');
-const numbered = { sides: 6, value: 4, numbered: true };
-setSides(numbered, 8);
-assert(!('numbered' in numbered), 'changing away from D6 removes its presentation');
 
 // Next roll: table dice only, or everything once all dice are in trays.
 const a = { sides: 6, value: 1 }, b = { sides: 6, value: 2, tray: 'b1' };

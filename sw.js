@@ -7,7 +7,7 @@ const ASSETS = [
   './manifest.de.webmanifest', './manifest.en.webmanifest', './manifest.fr.webmanifest', './manifest.es.webmanifest', './manifest.pt.webmanifest',
   './manifest.it.webmanifest', './manifest.nl.webmanifest', './manifest.pl.webmanifest', './icon.svg', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './icon-maskable-512.png',
-  './icons/cup.svg', './icons/d6.svg', './icons/d12-facets.svg', './icons/d12-shading.svg', './icons/d20-facets.svg', './icons/d20-shading.svg', './icons/dx.svg', './icons/trash.svg', './icons/volume.svg', './icons/volume-off.svg',
+  './icons/cup.svg', './icons/d6.svg', './icons/d12-facets.svg', './icons/d12-shading.svg', './icons/d20-facets.svg', './icons/d20-shading.svg', './icons/dx.svg', './icons/volume.svg', './icons/volume-off.svg',
   './backgrounds/thumbs/casino.webp', './backgrounds/thumbs/oak.webp', './backgrounds/thumbs/crafts.webp',
   './backgrounds/thumbs/bluewood.webp', './backgrounds/thumbs/terracotta.webp',
   './backgrounds/casino.webp', './backgrounds/oak.webp', './backgrounds/crafts.webp',

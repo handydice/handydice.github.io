@@ -2,8 +2,6 @@ import { COLORS, MAX_DICE, isSides, roll } from './dice.js';
 
 export const STATE_KEY = 'handydice-state';
 export const THEME_KEY = 'handydice-theme'; // also read by the inline script in index.html
-export const HISTORY_LIMIT = 30;
-
 const DEFAULT_DICE = [6, 6, 6, 6, 6];
 const isFace = (value, sides) => Number.isInteger(value) && value >= 1 && value <= sides;
 const isTray = tray => tray === 't1' || tray === 'b1';
@@ -19,12 +17,11 @@ export function loadState(json, surfaces) {
     restored,
     state: {
       dice: s.dice.map(loadDie).filter(Boolean),
-      history: Array.isArray(s.history) ? s.history.filter(h => typeof h === 'string').slice(0, HISTORY_LIMIT) : [],
       sets: Array.isArray(s.sets) ? s.sets.filter(isSet).map(loadSet) : [],
       lastTray: isTray(s.lastTray) ? s.lastTray : undefined,
       surface: surfaces.includes(s.surface) ? s.surface : '',
       sound: s.sound !== false,
-      clickMode: s.clickMode === 'select' || s.clickMode === 'edit' ? s.clickMode : 'direct',
+      clickMode: s.clickMode === 'select' ? s.clickMode : 'direct',
       rerolls: Number.isInteger(s.rerolls) && s.rerolls > 0 ? s.rerolls : 0,
       view: s.view === '3d' ? '3d' : '2d',
       tilt: s.tilt === true,

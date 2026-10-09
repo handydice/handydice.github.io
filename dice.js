@@ -48,14 +48,6 @@ export function putAside(dice, d, tray, before) {
   d.tray = tray;
 }
 
-// A new type is a different die that lands with a random face up; slot, tray and color stay.
-export function setSides(d, sides) {
-  if (d.sides === sides) return;
-  d.sides = sides;
-  d.value = roll(sides);
-  if (sides !== 6) delete d.numbered;
-}
-
 // Table slots (2D): a die moved to a tray keeps its slot free until the next roll, so nothing shifts on
 // the table. Dice without a slot (new, or back from a tray after a roll) are appended.
 export function assignSlots(dice) {

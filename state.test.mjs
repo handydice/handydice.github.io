@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { MAX_DICE } from './dice.js';
-import { HISTORY_LIMIT, loadState } from './state.js';
+import { loadState } from './state.js';
 
 const SURFACES = ['', 'oak'];
 const load = saved => loadState(JSON.stringify(saved), SURFACES);
@@ -16,7 +16,6 @@ for (const json of [null, '{', JSON.stringify({ dice: Array(MAX_DICE + 1).fill({
 // A valid round survives unchanged, including 2D table slots and the 3D display choice.
 const round = {
   dice: [{ sides: 20, value: 17, tray: 't1', color: 'red', slot: 2 }, { sides: 6, value: 3, slot: 0 }],
-  history: ['17 · 3 = 20'],
   sets: [{ name: 'Mine', dice: [6, 20], colors: ['blue', undefined] }],
   lastTray: 't1', surface: 'oak', sound: false, clickMode: 'select', rerolls: 2, view: '3d', tilt: true,
 };
@@ -67,23 +66,20 @@ assert.equal(repaired.dice.length, 2);
 assert(repaired.dice[0].value >= 1 && repaired.dice[0].value <= 6);
 assert.deepEqual(repaired.dice[1], { sides: 6, value: 2 });
 
-// Unknown fields disappear.
-const { state: cleaned } = load({ dice: [], mod: 2, lastTray: 't2' });
-assert(!('mod' in cleaned));
+// Unknown fields disappear, including the history of older versions.
+const { state: cleaned } = load({ dice: [], mod: 2, lastTray: 't2', history: ['4 · 2 = 6'] });
+assert(!('mod' in cleaned) && !('history' in cleaned));
 assert.equal(cleaned.lastTray, undefined);
 
-// Settings fall back to defaults; history and sets keep only usable entries.
+// Settings fall back to defaults; sets keep only usable entries.
 const { state: settings } = load({
   dice: [],
   surface: 'marble', clickMode: 'drag',
-  history: ['a', 5, ...Array(HISTORY_LIMIT).fill('b')],
   sets: [{ name: 'ok', dice: [6], colors: ['nope'] }, { name: 'empty', dice: [] }, { name: 'bad', dice: [1] }, { dice: [6] }],
 });
 assert.deepEqual(settings.dice, []);
 assert.equal(settings.surface, '');
 assert.equal(settings.clickMode, 'direct');
-assert.equal(settings.history.length, HISTORY_LIMIT);
-assert.equal(settings.history[0], 'a');
 assert.deepEqual(settings.sets, [{ name: 'ok', dice: [6], colors: [undefined] }]);
 
 console.log('state ok');
