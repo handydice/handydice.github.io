@@ -31,6 +31,8 @@
 [hidden] { display: none !important; }
 /* No double-tap zoom while interacting; scrolling and pinch zoom remain possible. */
 html, body, dialog { touch-action: manipulation; }
+/* iOS zooms on a double tap that lands on a disabled button; let such taps reach the parent instead. */
+button:disabled { pointer-events: none; }
 html { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 input { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
 /* iOS PWA fullscreen as in tabubu: height: 100% defeats viewport-fit=cover, and in the
