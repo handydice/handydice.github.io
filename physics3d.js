@@ -244,7 +244,7 @@ function addContact(a, b, px, py, pz, nx, ny, nz, s, material, dt) {
   const vn = rvx * nx + rvy * ny + rvz * nz;
   if (impactHook && vn < -3) {
     if (a) impactHook('die', -vn, a, b);
-    else if (simTime - (b.lastImpact ?? -1) > 0.045) { b.lastImpact = simTime; impactHook('table', -vn); }
+    else if (simTime - (b.lastImpact ?? -1) > 0.045) { b.lastImpact = simTime; impactHook('table', -vn, null, b); }
   }
   // Impacts reaching contact within this substep bounce; otherwise close the gap without bouncing.
   c.target = vn < -BOUNCE && s + vn * dt < 0 ? -material.e * vn : s > 0 ? -s / dt : 0;

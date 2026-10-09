@@ -506,8 +506,8 @@ async function doRoll(shaken = false) {
   if (flat) document.body.classList.toggle('classic', classic);
   const cup = !calm && !shaken && !classic;
   // Cup sound only with the cup animation; when shaken, the rattle already played.
-  // 3D: the cup cut without recorded table impacts — physics-triggered contact sounds cover those.
-  if (cup) sound(flat ? 'throw' : 'cup');
+  // 3D prototype: cup muted for the listening test, physics contacts cover the roll.
+  if (cup) { if (flat) sound('throw'); }
   else if (!shaken) sound('shuffle'); // spin and reduced motion rattle on the roll
   try {
     if (flat && cup) {

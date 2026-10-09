@@ -12,7 +12,7 @@ const ASSETS = [
   './backgrounds/thumbs/bluewood.webp', './backgrounds/thumbs/terracotta.webp',
   './backgrounds/casino.webp', './backgrounds/oak.webp', './backgrounds/crafts.webp',
   './backgrounds/bluewood.webp', './backgrounds/terracotta.webp',
-  './sounds/throw.mp3', './sounds/shuffle.mp3', './sounds/click.mp3',
+  './sounds/throw.mp3', './sounds/shuffle.mp3',
   './sounds/cup.mp3', './sounds/contact-table.wav', './sounds/contact-die.wav',
   './skins/opal/face.webp', './skins/opal/pips.webp', './skins/wood/face.webp', './skins/wood/pips.webp',
   './skins/galaxy/face.webp', './skins/galaxy/pips.webp', './skins/jade/face.webp', './skins/jade/pips.webp',

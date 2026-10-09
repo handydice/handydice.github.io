@@ -22,10 +22,10 @@ const idOf = body => {
   return id;
 };
 
-// Loudness ∝ impact energy (speed²): slow topples and slides stay near-silent, only fast impacts
-// sound loud. Thrown dice land around 12–18 world units/s, gentle flicks around 5–8.
+// Loudness rises steeply with speed (v³): a die dropped from the hand (~8–9 units/s, held at height 1.6)
+// is quiet, only fast throws and cup throws (13–16+) reach full volume.
 const gainOf = (type, speed) => {
-  const k = Math.min(1, speed / 16) ** 2;
+  const k = Math.min(1, speed / 16) ** 3;
   return type === 'die' ? Math.min(1.2, 3.4 * k) : 0.95 * k; // die sample is ~13 dB quieter
 };
 
@@ -41,6 +41,7 @@ export function impact(type, speed, a, b) {
     if (now - last < 40) return; // one sound per pair per rattle, not per manifold contact point
     pairs.set(key, now);
   }
+  voices++;
   const g = gainOf(type, speed);
   const source = context.createBufferSource();
   source.buffer = buffer;
@@ -52,5 +53,5 @@ export function impact(type, speed, a, b) {
   source.start(t);
   gain.gain.setTargetAtTime(0, t + buffer.duration, 0.006); // fade the tail so repeated stops never click
   const log = globalThis.__contacts ??= [];
-  if (log.length < 300) log.push({ type, speed: Math.round(speed * 10) / 10, gain: Math.round(g * 100) / 100 });
+  if (log.length < 300) log.push({ type, speed: Math.round(speed * 10) / 10, gain: Math.round(g * 100) / 100, held: !!(a?.held || b?.held) });
 }
