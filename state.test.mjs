@@ -12,20 +12,27 @@ for (const json of [null, '{', JSON.stringify({ dice: Array(MAX_DICE + 1).fill({
   assert.equal(state.dice.length, 5);
   for (const d of state.dice) assert(d.sides === 6 && d.value >= 1 && d.value <= 6);
   assert.deepEqual({ ...state, dice: [] }, {
-    dice: [], history: [], sets: [], lastTray: undefined, animation: 'cup', surface: '', sound: true, clickMode: 'direct', rerolls: 0,
+    dice: [], history: [], sets: [], lastTray: undefined, animation: 'cup', surface: '', sound: true, clickMode: 'direct', rerolls: 0, view: '2d',
   });
 }
 
-// A valid round survives unchanged.
+// A valid round survives unchanged, including 2D table slots and the 3D display choice.
 const round = {
   dice: [{ sides: 20, value: 17, tray: 't1', color: 'red', slot: 2 }, { sides: 6, value: 3, slot: 0 }],
   history: ['17 · 3 = 20'],
   sets: [{ name: 'Mine', dice: [6, 20], colors: ['blue', undefined] }],
-  lastTray: 't1', animation: 'classic', surface: 'oak', sound: false, clickMode: 'select', rerolls: 2,
+  lastTray: 't1', animation: 'classic', surface: 'oak', sound: false, clickMode: 'select', rerolls: 2, view: '3d',
 };
 const restoredRound = load(round);
 assert.equal(restoredRound.restored, true);
 assert.deepEqual(restoredRound.state, round);
+
+// Installs from before the display choice, or a corrupted choice, fall back to 2D without losing the round.
+for (const view of [undefined, '3D', 'webgl', 1]) {
+  const { state, restored } = load({ ...round, view });
+  assert.equal(restored, true);
+  assert.deepEqual(state, { ...round, view: '2d' });
+}
 
 // Numeric faces are an optional D6 presentation; plain D6 and every other die stay unchanged.
 const { state: display } = load({

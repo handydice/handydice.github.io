@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { assignSlots, compactSlots, isSides, putAside, roll, rollable, setSides, shuffle, total } from './dice.js';
+import { assignSlots, compactSlots, isSides, putAside, randomFaceValues, roll, rollable, setSides, shuffle, SIDES, total } from './dice.js';
 
 for (const sides of [2, 4, 6, 8, 10, 12, 20, 100, 7]) {
   const counts = new Array(sides + 1).fill(0);
@@ -76,5 +76,43 @@ for (let i = 0; i < 100; i++) {
   if (dice01234.some((d, index) => d !== before[index])) break;
   assert(i < 99, 'shuffle never changed the order');
 }
+
+// Every equally likely RNG path of randomFaceValues: an odometer over the injected integer(bound) picks.
+function everyNumbering(sides) {
+  const maps = [];
+  let picks = [];
+  for (;;) {
+    const bounds = [];
+    maps.push(randomFaceValues(sides, bound => picks[bounds.push(bound) - 1] ?? 1));
+    let i = bounds.length - 1;
+    while (i >= 0 && (picks[i] ?? 1) === bounds[i]) i--;
+    if (i < 0) return maps;
+    picks = bounds.map((_, j) => j < i ? picks[j] ?? 1 : j === i ? (picks[j] ?? 1) + 1 : 1);
+  }
+}
+const assertNumbering = (sides, map) => {
+  assert.equal(map.length, sides);
+  assert.deepEqual([...map].sort((x, y) => x - y), Array.from({ length: sides }, (_, i) => i + 1), `D${sides} ${map}`);
+  for (let k = 1; k <= sides; k++) assert.equal(map[k - 1] + map[sides - k], sides + 1, `D${sides} opposite of ${k}`);
+};
+for (const [sides, paths] of [[4, 2 * 4], [6, 6 * 8]]) {
+  const maps = everyNumbering(sides);
+  assert.equal(maps.length, paths, `D${sides}: pair permutations x flips`);
+  assert.equal(new Set(maps.map(String)).size, paths, `D${sides}: each path is a distinct numbering`);
+  for (let k = 1; k <= sides; k++) {
+    const counts = new Array(sides + 1).fill(0);
+    for (const map of maps) counts[map[k - 1]]++;
+    assert.deepEqual(counts.slice(1), new Array(sides).fill(paths / sides), `D${sides} face ${k} is uniform`);
+  }
+  maps.forEach(map => assertNumbering(sides, map));
+}
+for (const sides of SIDES) assertNumbering(sides, randomFaceValues(sides));
+for (const pick of [() => 1, bound => bound]) {
+  const map = randomFaceValues(100, pick);
+  assertNumbering(100, map);
+  assert.equal(map[0] + map[99], 101);
+  assert.equal(map[49] + map[50], 101);
+}
+assert.throws(() => randomFaceValues(7), RangeError);
 
 console.log('dice ok');

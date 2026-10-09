@@ -27,6 +27,7 @@ export function loadState(json, surfaces) {
       sound: s.sound !== false,
       clickMode: s.clickMode === 'select' || s.clickMode === 'edit' ? s.clickMode : 'direct',
       rerolls: Number.isInteger(s.rerolls) && s.rerolls > 0 ? s.rerolls : 0,
+      view: s.view === '3d' ? '3d' : '2d',
     },
   };
 }

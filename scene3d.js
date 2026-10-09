@@ -1,0 +1,343 @@
+import { buildDie, readValue } from './dice3d.js';
+import { makeBody, mat3, randomQuat, orientValue, step } from './physics3d.js';
+import { DiceRenderer } from './renderer3d.js';
+import { randomFaceValues, roll } from './dice.js';
+
+const shapes = new Map();
+const shapeOf = sides => {
+  if (!shapes.has(sides)) shapes.set(sides, buildDie(sides));
+  return shapes.get(sides);
+};
+const randomBuffer = new Uint32Array(128);
+let randomIndex = randomBuffer.length;
+const random = () => {
+  if (randomIndex === randomBuffer.length) { crypto.getRandomValues(randomBuffer); randomIndex = 0; }
+  return randomBuffer[randomIndex++] / 2 ** 32;
+};
+const displayedValue = body => {
+  const value = readValue(body.shape, mat3(body.quat, body.m));
+  return body.faceValues ? body.faceValues[value - 1] : value;
+};
+const restoreValue = (body, value) => orientValue(body, body.faceValues ? body.faceValues.indexOf(value) + 1 : value);
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+
+// One WebGL context for the table and both trays. Simulation/rendering stop completely at rest.
+export class DiceScene {
+  constructor(canvas, table) {
+    this.table = table;
+    this.renderer = new DiceRenderer(canvas);
+    this.renderer.onChange = () => this.invalidate();
+    this.bodies = new Map();
+    this.targets = new Map();
+    this.active = [];
+    this.tableBodies = [];
+    this.previews = [];
+    this.bounds = { x: 3, z: 4 };
+    this.raf = 0;
+    this.lastTime = 0;
+    this.accumulator = 0;
+    this.grip = null;
+    this.throwing = null;
+    this.onSettle = null;
+    this.onError = null;
+    this.rect = table.getBoundingClientRect();
+    this.frame = time => this.tick(time);
+    this.lost = () => {
+      this.failed = true;
+      cancelAnimationFrame(this.raf); this.raf = 0;
+      if (this.grip) this.cancelGrip();
+      // Losing the renderer aborts the throw; restore the last committed round before recovery.
+      for (const body of this.bodies.values()) {
+        restoreValue(body, body.die.value);
+        body.vel.fill(0); body.ang.fill(0); body.sleeping = true;
+      }
+      this.dropped = false;
+      this.throwing?.resolve(); this.throwing = null;
+    };
+    this.restored = () => { this.failed = false; this.invalidate(); };
+    this.visibility = () => {
+      if (document.hidden) { cancelAnimationFrame(this.raf); this.raf = 0; this.lastTime = 0; }
+      else this.invalidate();
+    };
+    canvas.addEventListener('webglcontextlost', this.lost);
+    canvas.addEventListener('webglcontextrestored', this.restored);
+    document.addEventListener('visibilitychange', this.visibility);
+  }
+
+  sync(dice, targets, surface, theme) {
+    for (const [d] of this.bodies) if (!dice.includes(d)) this.bodies.delete(d);
+    const count = dice.filter(d => !d.tray).length;
+    const columns = Math.max(1, Math.ceil(Math.sqrt(count * this.rect.width / Math.max(1, this.rect.height))));
+    let index = 0;
+    for (const d of dice) {
+      let body = this.bodies.get(d);
+      if (!body || body.shape.sides !== d.sides) {
+        const x = ((index % columns) - (columns - 1) / 2) * 1.4;
+        const z = (Math.floor(index / columns) - (Math.ceil(count / columns) - 1) / 2) * 1.4;
+        body = makeBody(shapeOf(d.sides), [x, 1, z]);
+        restoreValue(body, d.value);
+        body.sleeping = true;
+        body.die = d;
+        this.bodies.set(d, body);
+      }
+      body.color = d.color || 'white';
+      body.numbered = !!d.numbered;
+      if (body.tray !== d.tray) {
+        if (!d.tray) {
+          this.placeOnTable(body);
+        }
+        body.tray = d.tray;
+        restoreValue(body, d.value);
+        body.vel.fill(0); body.ang.fill(0); body.sleeping = true;
+      }
+      if (!d.tray) index++;
+    }
+    this.targets = targets;
+    this.renderer.setSurface(surface, theme);
+    this.layout();
+  }
+
+  placeOnTable(body) {
+    const xMax = this.bounds.x - body.shape.radius - 0.1, zMax = this.bounds.z - body.shape.radius - 0.1;
+    let best = -Infinity, nearest = Infinity;
+    // ponytail: 25 candidates, at most 12 dice; use packing if the dice limit grows.
+    for (let iz = -2; iz <= 2; iz++) for (let ix = -2; ix <= 2; ix++) {
+      const x = ix * xMax / 2, z = iz * zMax / 2;
+      let clearance = Infinity;
+      for (const other of this.bodies.values()) {
+        if (other === body || other.tray || other.die.tray) continue;
+        clearance = Math.min(clearance, Math.hypot(x - other.pos[0], z - other.pos[2]) - body.shape.radius - other.shape.radius);
+      }
+      const distance = x * x + z * z;
+      if (clearance > best || clearance === best && distance < nearest) {
+        best = clearance; nearest = distance;
+        body.pos[0] = x; body.pos[2] = z;
+      }
+    }
+  }
+
+  layout() {
+    const old = this.bounds;
+    this.rect = this.table.getBoundingClientRect();
+    const ratio = Math.max(0.4, Math.min(3, this.rect.width / Math.max(1, this.rect.height)));
+    this.bounds = { x: 2.7 * Math.max(1, ratio), z: 2.7 * Math.max(1, 1 / ratio) };
+    for (const body of this.bodies.values()) {
+      body.pos[0] = clamp(body.pos[0] * this.bounds.x / old.x, -this.bounds.x + body.shape.radius, this.bounds.x - body.shape.radius);
+      body.pos[2] = clamp(body.pos[2] * this.bounds.z / old.z, -this.bounds.z + body.shape.radius, this.bounds.z - body.shape.radius);
+    }
+    // Reframe resting dice without changing the round when the viewport changes.
+    if ((old.x !== this.bounds.x || old.z !== this.bounds.z) && !this.throwing && !this.grip) {
+      const table = [...this.bodies.values()].filter(body => !body.die.tray);
+      const columns = Math.max(1, Math.ceil(Math.sqrt(table.length * ratio)));
+      table.forEach((body, i) => {
+        if (!body.sleeping) return;
+        body.pos[0] = ((i % columns) - (columns - 1) / 2) * 1.4;
+        body.pos[2] = (Math.floor(i / columns) - (Math.ceil(table.length / columns) - 1) / 2) * 1.4;
+        restoreValue(body, body.die.value);
+      });
+    }
+    this.refreshEntries();
+    this.placeTargets();
+    this.invalidate();
+  }
+
+  refreshEntries() {
+    this.tableBodies.length = 0;
+    this.active.length = 0;
+    this.previews.length = 0;
+    for (const [d, body] of this.bodies) {
+      const el = this.targets.get(d);
+      body.highlight = !!el?.classList.contains('selected');
+      if (!d.tray && body !== this.grip?.body) {
+        this.tableBodies.push(body);
+        this.active.push(body);
+      } else if (body !== this.grip?.body && el) {
+        const r = el.getBoundingClientRect(), container = el.parentElement;
+        const clip = container.getBoundingClientRect();
+        if (r.bottom > clip.top && r.top < clip.bottom && r.right > clip.left && r.left < clip.right) {
+          const scrolling = container.scrollHeight > container.clientHeight || container.scrollWidth > container.clientWidth;
+          this.previews.push({ body, rect: r, clip: scrolling ? clip : undefined });
+        }
+      }
+    }
+    if (this.grip) {
+      const { body, x, y } = this.grip;
+      this.active.push(body);
+      if (x >= this.rect.left && x <= this.rect.right && y >= this.rect.top && y <= this.rect.bottom) this.tableBodies.push(body);
+      else this.previews.push({ body, rect: { left: x - 42, top: y - 42, width: 84, height: 84, right: x + 42, bottom: y + 42 } });
+    }
+  }
+
+  invalidate() {
+    if (!this.failed && !this.raf && !document.hidden) this.raf = requestAnimationFrame(this.frame);
+  }
+
+  tick(time) {
+    this.raf = 0;
+    const dt = this.lastTime ? Math.min(0.05, (time - this.lastTime) / 1000) : 1 / 60;
+    this.lastTime = time;
+    if (this.grip && time - this.grip.lastMotion > 80) this.grip.body.held.ang.fill(0);
+    let moving = this.active.some(body => !body.sleeping || body.held);
+    if (moving) {
+      this.accumulator += dt;
+      while (this.accumulator >= 1 / 120) {
+        step(this.active, 1 / 120, this.bounds);
+        this.accumulator -= 1 / 120;
+      }
+      moving = this.active.some(body => !body.sleeping || body.held);
+    }
+    this.draw();
+    if (!moving && this.throwing) {
+      const { dice, resolve } = this.throwing;
+      this.throwing = null;
+      for (const d of dice) d.value = displayedValue(this.bodies.get(d));
+      resolve();
+    } else if (!moving && this.dropped) {
+      this.dropped = false;
+      for (const body of this.tableBodies) body.die.value = displayedValue(body);
+      this.onSettle?.();
+    }
+    if (moving) this.invalidate();
+    else { this.lastTime = 0; this.accumulator = 0; }
+  }
+
+  draw() {
+    try {
+      this.renderer.render(this.tableBodies, this.rect, this.bounds, this.previews);
+      this.placeTargets();
+    } catch (error) {
+      this.failed = true;
+      this.throwing?.resolve(); this.throwing = null;
+      this.onError?.(error);
+    }
+  }
+
+  placeTargets() {
+    for (const body of this.tableBodies) {
+      const el = this.targets.get(body.die);
+      if (!el || body === this.grip?.body && body.die.tray) continue;
+      const { x, y, size } = this.renderer.project(body, this.rect, this.bounds);
+      const width = Math.max(44, size);
+      el.style.left = `${x - this.rect.left - width / 2}px`;
+      el.style.top = `${y - this.rect.top - width / 2}px`;
+      el.style.width = `${width}px`;
+      el.style.height = `${width}px`;
+      el.style.zIndex = String(Math.round(body.pos[1] * 10 + 10));
+    }
+  }
+  pick(x, y) { return this.renderer.raycast(x, y, this.tableBodies, this.rect, this.bounds); }
+
+  rattle(dice) {
+    for (const d of dice) {
+      if (d.tray) continue;
+      const body = this.bodies.get(d);
+      body.vel[1] = 1.5;
+      body.ang[0] = (random() - 0.5) * 6;
+      body.ang[2] = (random() - 0.5) * 6;
+      body.sleeping = false; body.sleepTimer = 0;
+    }
+    this.dropped = true;
+    this.invalidate();
+  }
+
+  throw(dice, { calm, classic } = {}) {
+    this.dropped = false;
+    const n = dice.length, columns = Math.ceil(Math.sqrt(n * this.rect.width / Math.max(1, this.rect.height)));
+    dice.forEach((d, i) => {
+      const b = this.bodies.get(d);
+      // Independent numbering makes every physical face uniformly random, including unequal d100 faces.
+      b.faceValues = randomFaceValues(d.sides);
+      b.faceValuesKey = b.faceValues.join(',');
+      if (calm) {
+        d.value = roll(d.sides);
+        restoreValue(b, d.value);
+        return;
+      }
+      b.quat = randomQuat(random);
+      b.pos[0] = ((i % columns) - (columns - 1) / 2) * 1.25;
+      b.pos[1] = classic ? 1.3 : 2.5 + Math.floor(i / columns) * 1.2 + random() * 0.4;
+      b.pos[2] = classic ? (Math.floor(i / columns) - (Math.ceil(n / columns) - 1) / 2) * 1.25 : this.bounds.z * 0.6;
+      b.vel[0] = (random() - 0.5) * 4;
+      b.vel[1] = classic ? 1 : 2 + random() * 3;
+      b.vel[2] = (random() - 0.5) * 4;
+      b.ang[0] = (random() - 0.5) * 24;
+      b.ang[1] = (random() - 0.5) * 24;
+      b.ang[2] = (random() - 0.5) * 24;
+      b.sleeping = false; b.sleepTimer = 0;
+    });
+    if (calm) { this.invalidate(); return Promise.resolve(); }
+    this.refreshEntries();
+    this.invalidate();
+    return new Promise(resolve => { this.throwing = { dice, resolve }; });
+  }
+
+  beginGrip(d, x, y) {
+    const body = this.bodies.get(d);
+    if (!body) return;
+    this.grip = {
+      body, x, y, originalPos: [...body.pos], originalQuat: [...body.quat],
+      originalVel: [...body.vel], originalAng: [...body.ang], originalSleeping: body.sleeping,
+      originalTray: body.tray,
+    };
+    body.sleeping = false; body.sleepTimer = 0;
+    body.held = { target: [...body.pos], ang: [0, 0, 0] };
+    this.dropped = true; // commit every displaced die after pickup, including neighboring dice
+    this.moveGrip(x, y, 0, 0);
+  }
+
+  moveGrip(x, y, dx, dy, rotate = false) {
+    if (!this.grip) return;
+    const { body } = this.grip;
+    this.grip.lastMotion = performance.now();
+    if (!rotate) { this.grip.x = x; this.grip.y = y; }
+    if (!rotate) {
+      const target = this.renderer.unproject(x, y, this.rect, this.bounds, 1.6);
+      target[0] = clamp(target[0], -this.bounds.x + body.shape.radius, this.bounds.x - body.shape.radius);
+      target[2] = clamp(target[2], -this.bounds.z + body.shape.radius, this.bounds.z - body.shape.radius);
+      body.held.target = target;
+    }
+    body.held.ang[0] = clamp(dy * 0.3, -12, 12);
+    body.held.ang[1] = clamp(dx * 0.3, -12, 12);
+    this.refreshEntries(); this.invalidate();
+  }
+
+  endGrip(d, cancelled = false, autoPlace = false) {
+    if (!this.grip) return;
+    const { body, originalPos, originalQuat, originalVel, originalAng, originalSleeping } = this.grip;
+    body.held = null;
+    body.tray = d.tray;
+    if (cancelled) {
+      body.pos = originalPos; body.quat = originalQuat;
+      body.vel = originalVel; body.ang = originalAng; body.sleeping = originalSleeping;
+    } else if (autoPlace && this.grip.originalTray && !d.tray) {
+      this.placeOnTable(body);
+      restoreValue(body, d.value);
+      body.vel.fill(0); body.ang.fill(0); body.sleeping = true;
+    } else if (d.tray) {
+      // A tray is storage, not another roll: keep the result from before pickup.
+      restoreValue(body, d.value);
+      body.vel.fill(0); body.ang.fill(0); body.sleeping = true;
+    } else {
+      body.vel[0] = clamp(body.vel[0], -8, 8);
+      body.vel[2] = clamp(body.vel[2], -8, 8);
+      body.sleeping = false; body.sleepTimer = 0;
+      this.dropped = true;
+    }
+    this.grip = null;
+    this.refreshEntries(); this.invalidate();
+  }
+
+  cancelGrip() { if (this.grip) this.endGrip(this.grip.body.die, true); }
+
+  dispose() {
+    this.failed = true;
+    cancelAnimationFrame(this.raf); this.raf = 0;
+    const canvas = this.renderer.canvas;
+    canvas.removeEventListener('webglcontextlost', this.lost);
+    canvas.removeEventListener('webglcontextrestored', this.restored);
+    document.removeEventListener('visibilitychange', this.visibility);
+    this.throwing?.resolve(); this.throwing = null;
+    this.grip = null; this.onSettle = null; this.onError = null;
+    this.renderer.dispose();
+  }
+}

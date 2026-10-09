@@ -82,6 +82,19 @@ header button:disabled { opacity: .5; cursor: default; }
   gap: 1rem; padding: var(--surface-gap) .2rem;
   border: 1px dashed transparent; border-radius: 1rem;
 }
+/* 3D view: dice are drawn on a fullscreen canvas; #dice only holds transparent hit targets. */
+[data-view="3d"] #dice { position: relative; display: block; padding: 0; }
+#dice-canvas { display: none; }
+[data-view="3d"] #dice-canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+[data-view="3d"] main { z-index: 1; }
+.rendered-die, .rendered-die[data-shape], .rendered-die.held, .rendered-die.drag {
+  background: transparent !important; border: 0 !important; box-shadow: none !important;
+  filter: none !important; transition: none !important; transform: none !important; animation: none !important;
+}
+.rendered-die > *, .rendered-die::before, .rendered-die::after { visibility: hidden; }
+#dice .rendered-die { position: absolute; }
+.rendered-die:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+#render-error { position: fixed; inset: 35% 1rem auto; z-index: 20; padding: 1rem; background: var(--card); border: 1px solid var(--danger); border-radius: 1rem; }
 #dice .die { width: var(--dice-size, 100%); }
 #dice .ghost { visibility: hidden; }
 /* Background: square textures for the whole app, cropped via cover in portrait and landscape.
@@ -269,6 +282,7 @@ header button:disabled { opacity: .5; cursor: default; }
 .die[data-shape].held, .die[data-shape].drag { box-shadow: none; }
 .die[data-shape].held, .die[data-shape].drag { filter: drop-shadow(.3rem .75rem .55rem #000a); }
 .die[data-shape].drag { transition: none; }
+.rendered-die.held { cursor: grabbing; }
 
 #bottomtrays { position: relative; }
 #total, .tray-total { font-size: 1.2rem; font-variant-numeric: tabular-nums; pointer-events: none; }
@@ -383,6 +397,8 @@ dialog button.danger { color: var(--danger); border-color: color-mix(in srgb, va
 #history:empty { display: none; }
 .hint { color: var(--muted); font-size: .85rem; margin: 1.2rem 0 0; }
 .hint a { color: var(--accent); }
+/* Settings hints that only apply to one view. */
+:root:not([data-view="3d"]) [data-view-only="3d"], [data-view="3d"] [data-view-only="2d"] { display: none; }
 #click-mode { width: 100%; margin-top: .6rem; }
 #position button, #order button { white-space: normal; }
 #order { grid-template-columns: repeat(2, 1fr); }

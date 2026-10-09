@@ -120,12 +120,20 @@ if ('serviceWorker' in navigator) {
       <button data-language="pl" lang="pl"><span class="flag" aria-hidden="true">🇵🇱</span>Polski</button>
     </div>
 
+    <h3>Dice display</h3>
+    <div class="grid" id="view">
+      <button data-view="2d">2D</button>
+      <button data-view="3d">3D</button>
+    </div>
+    <p class="hint">2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.</p>
+
     <h3>Roll animation</h3>
     <div class="grid" id="animation">
       <button data-animation="cup">Cup</button>
       <button data-animation="classic">Spin</button>
     </div>
-    <p class="hint">Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.</p>
+    <p class="hint" data-view-only="2d">Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.</p>
+    <p class="hint" data-view-only="3d">Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.</p>
     <p class="hint">Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.</p>
 
     <h3>Accessibility</h3>
@@ -138,7 +146,9 @@ if ('serviceWorker' in navigator) {
     </select>
     <p class="hint">Two taps: select a die, then tap the top tray, bottom tray or table. Tap a tray die to insert before it. Tap the selected die again or press Esc to cancel. Drag &amp; drop remains available in both modes.</p>
     <p class="hint">Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.</p>
+    <p class="hint" data-view-only="3d">3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.</p>
     <p class="hint" id="drag-help">Keyboard: Enter or Space to pick up, ↑ for top, ↓ for bottom, ← for the table. Enter to drop, Esc to cancel.</p>
+    <p class="hint" id="rotate-help" data-view-only="3d">Shift + arrow keys rotate picked-up dice.</p>
 
     <button id="install" class="wide" hidden>Install app</button>
     <p class="hint">Works offline · no trackers · no sign-up.<br>Language: Auto follows your browser. A manual choice is saved on this device.<br>Install: Android: “Install app” (appears when Chrome offers it); iOS: Share → “Add to Home Screen”.</p>

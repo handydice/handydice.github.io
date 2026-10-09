@@ -40,6 +40,57 @@ const SETS = [
 const PIPS = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
 
 const tableEl = $('#dice');
+const renderError = document.createElement('p');
+renderError.id = 'render-error';
+renderError.setAttribute('role', 'alert');
+renderError.hidden = true;
+document.body.append(renderError);
+function showRenderError(error) {
+  renderError.textContent = t('3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.');
+  renderError.hidden = false;
+  console.error(error);
+}
+
+// 3D view only: scene3d.js and its WebGL context load on demand, so 2D never touches WebGL.
+let scene = null, canvas = null, sceneToken = 0;
+const contextLost = e => {
+  e.preventDefault();
+  showRenderError(new Error('WebGL context lost'));
+};
+const contextRestored = () => { renderError.hidden = true; };
+async function startScene() {
+  const token = ++sceneToken;
+  let DiceScene;
+  try { ({ DiceScene } = await import('./scene3d.js')); }
+  catch (error) { if (token === sceneToken) showRenderError(error); return; }
+  if (token !== sceneToken) return; // switched back to 2D while loading
+  canvas = Object.assign(document.createElement('canvas'), { id: 'dice-canvas' });
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.addEventListener('webglcontextlost', contextLost);
+  canvas.addEventListener('webglcontextrestored', contextRestored);
+  document.body.prepend(canvas);
+  try { scene = new DiceScene(canvas, tableEl); }
+  catch (error) { showRenderError(error); return; }
+  scene.onError = showRenderError;
+  scene.onSettle = () => {
+    const focusedDie = document.activeElement?.die;
+    commit();
+    if (focusedDie) elsOf([focusedDie])[0]?.focus();
+  };
+  render();
+}
+function stopScene() {
+  sceneToken++;
+  canvas?.removeEventListener('webglcontextlost', contextLost);
+  canvas?.removeEventListener('webglcontextrestored', contextRestored);
+  scene?.dispose();
+  // A failed constructor may still have allocated a context without returning a scene.
+  if (!scene && canvas) canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+  scene = null;
+  canvas?.remove();
+  canvas = null;
+  renderError.hidden = true;
+}
 const trayEls = [...document.querySelectorAll('.tray')];
 // Every drop zone carries its tray in data-tray; '' is the table.
 const dropZones = [tableEl, ...trayEls];
@@ -55,7 +106,7 @@ let editingSets = false;
 for (const tray of trayEls) tray.firstElementChild.dataset.label = tray.dataset.tray === 't1' ? t('Top tray') : t('Bottom tray');
 tableEl.dataset.label = t('Table');
 
-// Every state change goes through commit(): slots, DOM and storage stay in sync.
+// Every state change goes through commit(): slots, scene, DOM and storage stay in sync.
 function commit() {
   assignSlots(state.dice);
   render();
@@ -104,27 +155,30 @@ const shapeOf = sides => `d${sides}`;
 const typeKey = d => d.sides === 6 && d.numbered ? '6-number' : String(d.sides);
 
 function dieEl(d) {
+  const flat = state.view === '2d';
   const el = document.createElement('div');
   el.die = d;
-  el.className = d === selected ? 'die selected' : 'die';
+  // 3D: a transparent focus and drop target over the rendered mesh; 2D draws the die itself.
+  el.className = `die${flat ? '' : ' rendered-die'}${d === selected ? ' selected' : ''}`;
   el.tabIndex = 0;
   el.setAttribute('role', 'button');
   el.dataset.color = d.color ?? '';
-  el.dataset.shape = shapeOf(d.sides);
+  if (flat) el.dataset.shape = shapeOf(d.sides);
   const action = state.clickMode === 'edit' ? t('edit') : state.clickMode === 'select' ? t('select') : d.tray ? t('return to table') : t('move to tray');
   const display = d.sides === 6 ? ` ${t(d.numbered ? 'Number' : 'Pips')}` : '';
   el.setAttribute('aria-label', `${d.color ? COLOR_NAMES[d.color] + ' ' : ''}${dieType(d.sides)}${display}: ${d.value}, ${action}`);
-  el.setAttribute('aria-describedby', 'drag-help');
+  el.setAttribute('aria-describedby', flat ? 'drag-help' : 'drag-help rotate-help');
   el.setAttribute('aria-pressed', d === selected);
-  el.innerHTML = face(d);
+  if (flat) el.innerHTML = face(d);
   el.onclick = e => {
     e.stopPropagation();
     // Screen readers can click without a pointer sequence; pointer taps are handled in pointerDrag.
     if (e.detail === 0 && !rolling) tapDie(d);
   };
-  el.oncontextmenu = e => { e.preventDefault(); openDie(d); };
+  // 3D opens the editor from the right button in pointerDrag; there it also rotates.
+  el.oncontextmenu = e => { e.preventDefault(); if (flat) openDie(d); };
   keyboardDrag(el, d);
-  pointerDrag(el, d);
+  pointerDrag(el);
   return el;
 }
 
@@ -137,8 +191,10 @@ function ghost() {
 
 function render() {
   const onTable = state.dice.filter(d => !d.tray);
-  tableEl.replaceChildren(...state.dice.filter(d => d.slot !== undefined).sort((a, b) => a.slot - b.slot)
-    .map(d => d.tray ? ghost() : dieEl(d)));
+  // 2D keeps tray dice's table slots free (ghosts) so nothing shifts; 3D places dice physically.
+  tableEl.replaceChildren(...state.view === '2d'
+    ? state.dice.filter(d => d.slot !== undefined).sort((a, b) => a.slot - b.slot).map(d => d.tray ? ghost() : dieEl(d))
+    : onTable.map(dieEl));
   for (const tray of trayEls) {
     const dice = state.dice.filter(d => d.tray === tray.dataset.tray);
     tray.firstElementChild.replaceChildren(...dice.map(dieEl));
@@ -147,6 +203,8 @@ function render() {
     tray.classList.toggle('occupied', dice.length > 0);
   }
   markPressed($('#animation'), 'animation', state.animation);
+  markPressed($('#view'), 'view', state.view);
+  document.documentElement.dataset.view = state.view;
   markPressed($('#sound'), 'sound', state.sound ? 'on' : 'off');
   markPressed($('#surface'), 'surface', state.surface);
   document.documentElement.dataset.surface = state.surface;
@@ -157,10 +215,15 @@ function render() {
   $('#reset').hidden = onTable.length === state.dice.length;
   $('#new-die').disabled = rolling || state.dice.length >= MAX_DICE;
   $('#history').replaceChildren(...state.history.map(h => Object.assign(document.createElement('li'), { textContent: h })));
-  fitTable();
+  if (state.view === '2d') fitTable();
+  else scene?.sync(state.dice, new Map(elsOf(state.dice).map(el => [el.die, el])), state.surface, document.documentElement.dataset.theme);
 }
 
 function fitTable() {
+  if (state.view === '3d') {
+    scene?.layout();
+    return;
+  }
   const style = getComputedStyle(tableEl);
   const width = tableEl.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
   const height = tableEl.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
@@ -180,6 +243,7 @@ function cancelSelection() {
     el.classList.remove('selected');
     el.setAttribute('aria-pressed', 'false');
   }
+  scene?.refreshEntries(); scene?.invalidate();
 }
 
 function selectDie(d) {
@@ -189,6 +253,7 @@ function selectDie(d) {
     el.classList.toggle('selected', el.die === d);
     el.setAttribute('aria-pressed', el.die === d);
   }
+  scene?.refreshEntries(); scene?.invalidate();
 }
 
 function dropSelected(tray, before) {
@@ -238,11 +303,25 @@ function keyboardDrag(el, d) {
       return;
     }
     if (rolling || (cancelDrag && !grabbed)) return;
+    if (state.view === '3d' && grabbed && e.shiftKey && e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      scene?.moveGrip(rect.left + rect.width / 2, rect.top + rect.height / 2,
+        e.key === 'ArrowLeft' ? -15 : e.key === 'ArrowRight' ? 15 : 0,
+        e.key === 'ArrowUp' ? -15 : e.key === 'ArrowDown' ? 15 : 0, true);
+      return;
+    }
     if (grabbed ? !confirm && e.key !== 'Escape' && !arrowTargets.has(e.key) : !confirm) return;
     e.preventDefault();
     if (!grabbed) {
       cancelSelection();
       grabbed = true;
+      if (state.view === '3d') {
+        // The physical die is lifted at once; Enter without an arrow puts it back where it was.
+        target = dropZones.find(zone => zone.dataset.tray === (d.tray ?? ''));
+        const rect = el.getBoundingClientRect();
+        scene?.beginGrip(d, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      }
       el.classList.add('held');
       el.setAttribute('aria-pressed', 'true');
       document.body.classList.add('dragging');
@@ -252,19 +331,23 @@ function keyboardDrag(el, d) {
         el.classList.remove('held');
         el.setAttribute('aria-pressed', 'false');
         clearDropHints();
+        scene?.cancelGrip();
         cancelDrag = null;
       };
     } else if (e.key === 'Escape') {
       cancelDrag();
     } else if (confirm) {
       const to = target;
-      cancelDrag();
       if (to) moveTo(d, to.dataset.tray);
+      scene?.endGrip(d, !to, to === tableEl);
+      cancelDrag();
       commit();
       elsOf([d])[0]?.focus();
     } else {
       target = arrowTargets.get(e.key);
       showDropTarget(target);
+      const rect = target.getBoundingClientRect();
+      scene?.moveGrip(rect.left + rect.width / 2, rect.top + rect.height / 2, 0, 0);
     }
   };
   el.onblur = () => { if (grabbed) cancelDrag(); };
@@ -290,77 +373,102 @@ const trayTarget = (tray, d, x, y) => [...tray.firstElementChild.children].find(
 // Tap, long press and drag share the pointer. A tap with a slight swipe stays a tap: dragging starts
 // beyond DRAG_SLOP, and within the first DRAG_DELAY_MS only beyond DRAG_FAST_SLOP (a deliberate flick).
 const DRAG_SLOP = 12, DRAG_FAST_SLOP = 30, DRAG_DELAY_MS = 150;
-function pointerDrag(el, d) {
+function pointerDrag(el) {
   el.addEventListener('pointerdown', start => {
-    if (cancelDrag || rolling || start.button > 0) return;
+    const flat = state.view === '2d';
+    // 3D: the pointer grabs the mesh under it; the table target only marks the die's footprint.
+    const d = flat || el.die.tray ? el.die : scene?.pick(start.clientX, start.clientY)?.die;
+    if (!d) return;
+    if (cancelDrag || rolling || start.button > (flat ? 0 : 2)) return;
     start.preventDefault();
     const r = el.getBoundingClientRect();
-    // Over a tray the die shrinks to tray size so the gap next to it stays visible.
-    const small = parseFloat(getComputedStyle($('main')).getPropertyValue('--tray-die-size') || '3.6rem') * parseFloat(getComputedStyle(document.documentElement).fontSize) / r.width;
+    // 2D: over a tray the die shrinks to tray size so the gap next to it stays visible.
+    const small = flat && parseFloat(getComputedStyle($('main')).getPropertyValue('--tray-die-size') || '3.6rem') * parseFloat(getComputedStyle(document.documentElement).fontSize) / r.width;
+    const started = performance.now();
+    let moved = false, lastX = start.clientX, lastY = start.clientY;
+    let rotate = start.shiftKey || start.button === 2;
+    let secondPointer = null;
     el.classList.add('held'); // lift as soon as the finger is on it
-    let moved = false;
-    const holdTimer = setTimeout(() => { cancelDrag?.(); openDie(d); }, 550);
+    const holdTimer = start.button === 0 ? setTimeout(() => { cancelDrag?.(); openDie(d); }, 550) : null;
+    // 3D: a second finger rotates the gripped die.
+    const extraDown = ev => {
+      if (ev.pointerId === start.pointerId) return;
+      secondPointer = ev.pointerId;
+      rotate = true;
+      clearTimeout(holdTimer);
+    };
     const move = ev => {
-      if (ev.pointerId !== start.pointerId) return;
+      if (ev.pointerId !== start.pointerId && ev.pointerId !== secondPointer) return;
       const dx = ev.clientX - start.clientX, dy = ev.clientY - start.clientY;
       const dist = Math.hypot(dx, dy);
-      if (!moved && (dist < DRAG_SLOP || (ev.timeStamp - start.timeStamp < DRAG_DELAY_MS && dist < DRAG_FAST_SLOP))) return;
+      const threshold = performance.now() - started < DRAG_DELAY_MS ? DRAG_FAST_SLOP : DRAG_SLOP;
+      if (!moved && dist < threshold && secondPointer === null) return;
       clearTimeout(holdTimer);
       if (!moved) {
         moved = true;
         cancelSelection();
-        Object.assign(el.style, {
-          position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px',
-          zIndex: 10, pointerEvents: 'none',
-        });
-        el.classList.add('drag');
         document.body.classList.add('dragging');
+        if (flat) {
+          Object.assign(el.style, {
+            position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px',
+            zIndex: 10, pointerEvents: 'none',
+          });
+          el.classList.add('drag');
+        } else scene?.beginGrip(d, start.clientX, start.clientY);
       }
       const target = dropTargetAt(ev.clientX, ev.clientY);
       const tray = target === tableEl ? undefined : target;
-      el.style.transform = `translate(${dx}px, ${dy}px) scale(${tray ? small : 1.08})`;
+      if (flat) el.style.transform = `translate(${dx}px, ${dy}px) scale(${tray ? small : 1.08})`;
+      else scene?.moveGrip(ev.clientX, ev.clientY, ev.clientX - lastX, ev.clientY - lastY, rotate || ev.shiftKey);
+      lastX = ev.clientX; lastY = ev.clientY;
       showDropTarget(target);
       // Compute the target without the gap (as on release), otherwise the gap pushes its own target away.
       marker.remove();
       if (tray) tray.firstElementChild.insertBefore(marker, trayTarget(tray, d, ev.clientX, ev.clientY) ?? null);
     };
     const up = ev => {
+      if (ev.pointerId === secondPointer) { secondPointer = null; rotate = start.shiftKey || start.button === 2; return; }
       if (ev.pointerId !== start.pointerId) return;
       clearTimeout(holdTimer);
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', up);
       removeEventListener('pointercancel', up);
+      removeEventListener('pointerdown', extraDown);
       cancelDrag = null;
       clearDropHints();
       el.classList.remove('held');
-      if (ev.type === 'pointerup') {
-        if (!moved) {
-          tapDie(d);
-          return;
-        }
-        const target = dropTargetAt(ev.clientX, ev.clientY);
-        if (target) moveTo(d, target.dataset.tray, target === tableEl ? undefined : trayTarget(target, d, ev.clientX, ev.clientY)?.die);
+      if (!moved) {
+        if (ev.type === 'pointerup' && start.button === 0) tapDie(d);
+        else if (ev.type === 'pointerup' && start.button === 2) openDie(d);
+        return;
       }
-      if (moved) commit();
+      const target = ev.type === 'pointerup' ? dropTargetAt(ev.clientX, ev.clientY) : null;
+      if (target) moveTo(d, target.dataset.tray, target === tableEl ? undefined : trayTarget(target, d, ev.clientX, ev.clientY)?.die);
+      scene?.endGrip(d, !target);
+      commit();
     };
     cancelDrag = () => up({ pointerId: start.pointerId, type: 'pointercancel' });
     addEventListener('pointermove', move);
     addEventListener('pointerup', up);
     addEventListener('pointercancel', up);
+    if (!flat) addEventListener('pointerdown', extraDown);
   });
 }
 
-// Rolling. Cup animation: collect → button shakes → throw out. Values are fixed only on the throw.
+// 2D cup animation: collect → button shakes → throw out. Values are fixed only on the throw.
 const play = (el, frames, opts) => el.animate(frames, opts).finished.catch(() => {}); // cancelled = finished
 const toButton = el => {
   const a = el.getBoundingClientRect(), b = $('#roll').getBoundingClientRect();
   return `translate(${b.x + b.width / 2 - a.x - a.width / 2}px, ${b.y + b.height / 2 - a.y - a.height / 2}px)`;
 };
-const tumble = () => `rotate(${Math.round((Math.random() - .5) * 720)}deg)`;
+const tumble = () => `rotate(${Math.round((Math.random() - .5) * 720)}deg)`; // cosmetic only
 
+// One roll for both views and every trigger (button, keyboard, long press, shake): same rules, sounds
+// and one history row. 3D throws physically; scene3d.js maps the landed faces to crypto rolls.
 // shaken: the phone was shaken – the dice already rattled on the table, so no cup button.
 async function doRoll(shaken = false) {
-  if (rolling || !state.dice.length || dialogOpen() || (shaken && selected)) return;
+  const flat = state.view === '2d';
+  if ((!flat && (!scene || !renderError.hidden || cancelDrag)) || rolling || !state.dice.length || dialogOpen() || (shaken && selected)) return;
   interrupt();
   rolling = true;
   $('#roll').disabled = true;
@@ -371,60 +479,64 @@ async function doRoll(shaken = false) {
   const active = rollable(state.dice);
   const calm = reducedMotion();
   const classic = state.animation === 'classic' && !calm;
-  document.body.classList.toggle('classic', classic);
+  if (flat) document.body.classList.toggle('classic', classic);
   const cup = !calm && !shaken && !classic;
   // Cup sound only with the cup animation; when shaken, the rattle already played.
   if (cup) sound('throw');
   else if (!shaken) sound('shuffle'); // spin and reduced motion rattle on the roll
-
-  if (cup) {
-    // 1. Collect: the dice fly into the roll button.
-    const els = elsOf(active);
-    await Promise.all(els.map((el, i) => play(el,
-      [{ transform: 'none', opacity: 1 }, { transform: `${toButton(el)} scale(.25) ${tumble()}`, opacity: 0 }],
-      { duration: 200, delay: i * 20, easing: 'ease-in', fill: 'forwards' })));
-    // 2. Shake: the button jiggles, the phone buzzes along.
-    navigator.vibrate?.([15, 50, 15, 50, 15, 50, 15]);
-    await play($('#roll'),
-      [{ transform: 'translateX(-7px) rotate(-2.5deg) scale(1.03)' }, { transform: 'translateX(7px) rotate(2.5deg) scale(1.03)' }],
-      { duration: 85, iterations: 4, direction: 'alternate', easing: 'ease-in-out' });
-  }
-
-  if (newRound) state.dice.forEach(d => { delete d.tray; });
-  // Dice left in a tray → reroll since the last roll with all dice; how they got back doesn't matter.
-  state.rerolls = state.dice.some(d => d.tray) ? state.rerolls + 1 : 0;
-  // Shuffled dice scatter over the table instead of each die returning to its old spot.
-  compactSlots(state.dice, shuffle(active));
-  // Spin animation: seven quick value changes while the dice wobble on the table.
-  if (classic) {
-    for (let i = 0; i < 7; i++) {
+  try {
+    if (flat && cup) {
+      // 1. Collect: the dice fly into the roll button.
+      await Promise.all(elsOf(active).map((el, i) => play(el,
+        [{ transform: 'none', opacity: 1 }, { transform: `${toButton(el)} scale(.25) ${tumble()}`, opacity: 0 }],
+        { duration: 200, delay: i * 20, easing: 'ease-in', fill: 'forwards' })));
+      // 2. Shake: the button jiggles, the phone buzzes along.
+      navigator.vibrate?.([15, 50, 15, 50, 15, 50, 15]);
+      await play($('#roll'),
+        [{ transform: 'translateX(-7px) rotate(-2.5deg) scale(1.03)' }, { transform: 'translateX(7px) rotate(2.5deg) scale(1.03)' }],
+        { duration: 85, iterations: 4, direction: 'alternate', easing: 'ease-in-out' });
+    }
+    if (newRound) state.dice.forEach(d => { delete d.tray; });
+    // Dice left in a tray → reroll since the last roll with all dice; how they got back doesn't matter.
+    state.rerolls = state.dice.some(d => d.tray) ? state.rerolls + 1 : 0;
+    // 2D: shuffled dice scatter over the table instead of each die returning to its old spot.
+    compactSlots(state.dice, flat ? shuffle(active) : active);
+    if (flat) {
+      // Spin animation: seven quick value changes while the dice wobble on the table.
+      if (classic) {
+        for (let i = 0; i < 7; i++) {
+          active.forEach(d => { d.value = roll(d.sides); });
+          render();
+          await new Promise(resolve => setTimeout(resolve, 70));
+        }
+      }
       active.forEach(d => { d.value = roll(d.sides); });
       render();
-      await new Promise(resolve => setTimeout(resolve, 70));
+      document.body.classList.remove('sum-pending');
+      // 3. Throw out: one after another from the button to their slots, slightly twisted, with a bounce.
+      //    After shaking they hop up in place and land instead. No filter keyframes: WebKit (iOS) renders
+      //    an animated filter blurry with an oversized shadow and pops to the sharp die when it ends.
+      const out = [...tableEl.children].filter(el => active.includes(el.die));
+      if (!classic) await Promise.all(out.map((el, i) => calm
+        ? play(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 150 })
+        : play(el, [
+          { transform: `${shaken ? 'translateY(-2.5rem) scale(1.25)' : `${toButton(el)} scale(.3)`} ${tumble()}`, opacity: 0 },
+          { transform: `translate(0, 0) scale(1.1) rotate(${Math.round((Math.random() - .5) * 16)}deg)`, opacity: 1, offset: .7 },
+          { transform: 'none', opacity: 1 },
+        ], { duration: 420, delay: i * 70, easing: 'cubic-bezier(.2, .8, .3, 1)', fill: 'backwards' })));
+    } else {
+      render();
+      await scene.throw(active, { calm, classic: state.animation === 'classic' });
+      if (scene.failed) return; // an aborted WebGL throw is not a completed history result
     }
+    navigator.vibrate?.(25);
+    state.history = [`${state.dice.map(d => d.value).join(' · ')} = ${total(state.dice)}`, ...state.history].slice(0, HISTORY_LIMIT);
+  } finally {
+    rolling = false;
+    $('#roll').disabled = false;
+    document.body.classList.remove('rolling', 'sum-pending', 'classic');
+    commit();
   }
-  active.forEach(d => { d.value = roll(d.sides); });
-  render();
-  document.body.classList.remove('sum-pending');
-
-  // 3. Throw out: one after another from the button to their slots, slightly twisted, with a bounce.
-  //    After shaking they hop up in place and land instead. No filter keyframes: WebKit (iOS) renders
-  //    an animated filter blurry with an oversized shadow and pops to the sharp die when it ends.
-  const out = [...tableEl.children].filter(el => active.includes(el.die));
-  if (!classic) await Promise.all(out.map((el, i) => calm
-    ? play(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 150 })
-    : play(el, [
-      { transform: `${shaken ? 'translateY(-2.5rem) scale(1.25)' : `${toButton(el)} scale(.3)`} ${tumble()}`, opacity: 0 },
-      { transform: `translate(0, 0) scale(1.1) rotate(${Math.round((Math.random() - .5) * 16)}deg)`, opacity: 1, offset: .7 },
-      { transform: 'none', opacity: 1 },
-    ], { duration: 420, delay: i * 70, easing: 'cubic-bezier(.2, .8, .3, 1)', fill: 'backwards' })));
-
-  navigator.vibrate?.(25);
-  rolling = false;
-  $('#roll').disabled = false;
-  document.body.classList.remove('rolling', 'classic');
-  state.history = [`${state.dice.map(d => d.value).join(' · ')} = ${total(state.dice)}`, ...state.history].slice(0, HISTORY_LIMIT);
-  commit();
 }
 
 // Roll on release, not only on click: after a long press the browser fires contextmenu and drops the
@@ -668,12 +780,23 @@ function setTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
   markPressed($('#theme'), 'theme', theme);
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  scene?.renderer.setSurface(state.surface, theme);
+  scene?.invalidate();
 }
 onPick($('#theme'), 'theme', setTheme);
 setTheme(document.documentElement.dataset.theme);
 onPick($('#animation'), 'animation', animation => {
   state.animation = animation;
   commit();
+});
+// Switching the view keeps the round as it is; only the presentation changes. Not during a roll.
+onPick($('#view'), 'view', view => {
+  if (rolling || view === state.view) return;
+  interrupt();
+  state.view = view;
+  if (view === '2d') stopScene();
+  commit(); // publishes data-view before the 3D canvas is measured
+  if (view === '3d') startScene();
 });
 onPick($('#surface'), 'surface', surface => {
   state.surface = surface;
@@ -726,7 +849,8 @@ addEventListener('devicemotion', e => {
   lastMag = m;
   if (!jolt && !(shakeTimer && m > SHAKE_KEEP)) return;
   if (!shakeTimer) {
-    for (const el of elsOf(rollable(state.dice))) el.classList.add('rattle');
+    if (state.view === '2d') for (const el of elsOf(rollable(state.dice))) el.classList.add('rattle');
+    else if (!reducedMotion()) scene?.rattle(rollable(state.dice));
     // The rattle starts with the shaking, not with the throw; with reduced motion nothing wobbles.
     if (!reducedMotion()) sound('shuffle');
     navigator.vibrate?.([15, 50, 15, 50, 15]);
@@ -747,14 +871,19 @@ if (state.sound) loadSounds();
 watchViewport(sizeChanged => {
   if (sizeChanged) {
     interrupt();
-    // The layout moved under a running roll: end its animations instead of flying to stale positions.
-    if (rolling) for (const animation of document.getAnimations())
+    // 2D: the layout moved under a running roll: end its animations instead of flying to stale positions.
+    // 3D resizes the camera and collision bounds; the physical roll continues in the new viewport.
+    if (rolling && state.view === '2d') for (const animation of document.getAnimations())
       if (animation.effect?.target?.closest('#dice, .tray, #roll')) animation.cancel();
   }
   fitTable();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) interrupt(); });
+for (const tray of trayEls) tray.firstElementChild.addEventListener('scroll', () => {
+  scene?.refreshEntries(); scene?.invalidate();
+}, { passive: true });
 
 commit();
+if (state.view === '3d') startScene();
 document.documentElement.classList.add('ready');
 if (!restored) doRoll();

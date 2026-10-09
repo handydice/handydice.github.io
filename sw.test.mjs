@@ -8,6 +8,7 @@ const files = dir => readdirSync(new URL(dir, root)).filter(name => !name.starts
 const expected = [
   ...files('').filter(f => /\.(js|css|html|png|svg|webmanifest)$/.test(f) && f !== 'sw.js'),
   ...files('icons/'), ...files('sounds/'), ...files('backgrounds/thumbs/'),
+  ...files('backgrounds/').filter(f => f.endsWith('.webp')),
   ...readdirSync(new URL('skins/', root)).flatMap(skin => files(`skins/${skin}/`)),
 ];
 

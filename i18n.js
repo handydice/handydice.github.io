@@ -58,6 +58,7 @@ const german = {
   'Off': 'Aus',
   'Spin': 'Drehen',
   'Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.': 'Standard: Becher – einsammeln und auswerfen mit leichter Flugunschärfe. Die Summe erscheint beim Auswerfen. Drehen: Würfel bleiben auf dem Tisch.',
+  'Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.': 'Becher: Würfel auf den Tisch werfen. Drehen: ein flacherer Wurf. Ergebnisse erscheinen, wenn die Würfel liegen bleiben.',
   'Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.': 'Querformat: Würfeltisch links, Ablagen und Becher rechts. Beim Drehen bleibt die Runde erhalten. Volle Ablagen lassen sich scrollen.',
   'Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.': 'Antippen legt Würfel in die zuletzt verwendete Ablage, anfangs unten. Erneutes Antippen holt sie zurück. Ziehen wählt die Ablage oben oder unten.',
   'Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.': 'Würfel bearbeiten: länger gedrückt halten. Ohne Langdruck: unter Accessibility „Würfel bearbeiten“ wählen und einen Würfel antippen.',
@@ -119,6 +120,13 @@ const german = {
   'License': 'Lizenz',
   'MIT license. The source code is on GitHub.': 'MIT-Lizenz. Der Quellcode ist auf GitHub.',
   'View source code': 'Quellcode ansehen',
+  '3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.': '3D: Ziehen zum Aufheben, loslassen zum Ablegen. Mit Umschalt ziehen oder mit einem zweiten Finger drehen.',
+  '3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.': 'Die 3D-Darstellung braucht WebGL2. In den Einstellungen 2D wählen oder Grafikbeschleunigung aktivieren und neu laden.',
+  'Shift + arrow keys rotate picked-up dice.': 'Umschalt + Pfeiltasten drehen aufgehobene Würfel.',
+  'Dice display': 'Würfeldarstellung',
+  '2D': '2D',
+  '3D': '3D',
+  '2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.': '2D: sparsam, ideal für ältere Geräte. 3D: physikalische Würfel, benötigt WebGL2.',
 };
 const french = {
   'Dice': 'Dés',
@@ -162,6 +170,7 @@ const french = {
   'Off': 'Désactivé',
   'Spin': 'Rotation',
   'Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.': 'Par défaut : Gobelet – ramasser et lancer avec un léger flou de mouvement. Le total apparaît quand les dés sortent. Rotation : les dés restent sur la table.',
+  'Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.': 'Gobelet : lancer les dés sur la table. Rotation : un lancer plus bas. Les résultats apparaissent quand les dés s’immobilisent.',
   'Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.': "Paysage : dés à gauche, réserves et gobelet à droite. Tourner l'écran conserve la partie. Les réserves pleines défilent.",
   'Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.': 'Touchez un dé pour le placer dans la dernière réserve utilisée, au départ celle du bas. Touchez-le à nouveau pour le remettre sur la table. Faites-le glisser pour choisir la réserve du haut ou du bas.',
   'Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.': 'Modifier un dé : appui long. Sans appui long : choisissez « Modifier le dé » sous Accessibilité, puis touchez un dé.',
@@ -223,6 +232,13 @@ const french = {
   'License': 'Licence',
   'MIT license. The source code is on GitHub.': 'Licence MIT. Le code source est sur GitHub.',
   'View source code': 'Voir le code source',
+  '3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.': '3D : faites glisser pour soulever, relâchez pour poser. Maintenez Maj ou utilisez un deuxième doigt pour tourner.',
+  '3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.': 'La 3D nécessite WebGL2. Choisissez 2D dans les Réglages, ou activez l’accélération graphique et rechargez la page.',
+  'Shift + arrow keys rotate picked-up dice.': 'Maj + les flèches font tourner les dés soulevés.',
+  'Dice display': 'Affichage des dés',
+  '2D': '2D',
+  '3D': '3D',
+  '2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.': '2D : léger, idéal pour les appareils anciens. 3D : dés physiques, nécessite WebGL2.',
 };
 const spanish = {
   'Dice': 'Dados',
@@ -266,6 +282,7 @@ const spanish = {
   'Off': 'Desactivado',
   'Spin': 'Giro',
   'Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.': 'Por defecto: Cubilete – recoger y lanzar con un ligero desenfoque de movimiento. El total aparece cuando salen los dados. Giro: los dados se quedan en la mesa.',
+  'Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.': 'Cubilete: lanzar dados sobre la mesa. Giro: un lanzamiento más bajo. Los resultados aparecen cuando los dados se detienen.',
   'Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.': 'Horizontal: dados a la izquierda, bandejas y cubilete a la derecha. Al girar, la partida se conserva. Las bandejas llenas se pueden desplazar.',
   'Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.': 'Toca un dado para moverlo a la última bandeja usada, al principio la inferior. Tócalo de nuevo para devolverlo. Arrástralo para elegir la bandeja superior o inferior.',
   'Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.': 'Editar dados: mantén pulsado. Sin mantener pulsado: elige «Editar dado» en Accesibilidad y toca un dado.',
@@ -327,6 +344,13 @@ const spanish = {
   'License': 'Licencia',
   'MIT license. The source code is on GitHub.': 'Licencia MIT. El código fuente está en GitHub.',
   'View source code': 'Ver el código fuente',
+  '3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.': '3D: arrastra para levantar y suelta para dejar caer. Mantén Mayús o usa un segundo dedo para girar.',
+  '3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.': 'La vista 3D necesita WebGL2. Elige 2D en Ajustes, o activa la aceleración gráfica y vuelve a cargar.',
+  'Shift + arrow keys rotate picked-up dice.': 'Mayús + las flechas giran los dados levantados.',
+  'Dice display': 'Visualización de dados',
+  '2D': '2D',
+  '3D': '3D',
+  '2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.': '2D: ligera, ideal para dispositivos antiguos. 3D: dados físicos, requiere WebGL2.',
 };
 // Brazilian Portuguese; Portugal shares the table because the language choice ignores regions.
 const portuguese = {
@@ -371,6 +395,7 @@ const portuguese = {
   'Off': 'Desligado',
   'Spin': 'Giro',
   'Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.': 'Padrão: Copo – juntar e lançar com um leve desfoque de movimento. O total aparece quando os dados saem. Giro: os dados ficam na mesa.',
+  'Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.': 'Copo: lançar dados sobre a mesa. Giro: um lançamento mais baixo. Os resultados aparecem quando os dados param.',
   'Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.': 'Paisagem: dados à esquerda, bandejas e copo à direita. Girar a tela mantém a rodada. É possível deslizar as bandejas cheias.',
   'Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.': 'Toque em um dado para movê-lo para a última bandeja usada, inicialmente a de baixo. Toque de novo para devolvê-lo. Arraste para escolher a bandeja de cima ou de baixo.',
   'Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.': 'Editar dados: toque e segure. Sem segurar: escolha “Editar dado” em Acessibilidade e toque em um dado.',
@@ -432,6 +457,13 @@ const portuguese = {
   'License': 'Licença',
   'MIT license. The source code is on GitHub.': 'Licença MIT. O código-fonte está no GitHub.',
   'View source code': 'Ver o código-fonte',
+  '3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.': '3D: arraste para levantar e solte para deixar cair. Segure Shift ou use um segundo dedo para girar.',
+  '3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.': 'A visualização 3D precisa de WebGL2. Escolha 2D em Configurações, ou ative a aceleração gráfica e recarregue.',
+  'Shift + arrow keys rotate picked-up dice.': 'Shift + as setas giram os dados levantados.',
+  'Dice display': 'Exibição dos dados',
+  '2D': '2D',
+  '3D': '3D',
+  '2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.': '2D: leve, ideal para aparelhos mais antigos. 3D: dados físicos, requer WebGL2.',
 };
 const italian = {
   'Dice': 'Dadi',
@@ -475,6 +507,7 @@ const italian = {
   'Off': 'Disattivo',
   'Spin': 'Rotazione',
   'Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.': 'Predefinito: Bicchiere – raccogli e lancia con una leggera sfocatura di movimento. Il totale appare quando i dadi escono. Rotazione: i dadi restano sul tavolo.',
+  'Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.': 'Bicchiere: lancia i dadi sul tavolo. Rotazione: un lancio più basso. I risultati appaiono quando i dadi si fermano.',
   'Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.': 'Orizzontale: dadi a sinistra, vassoi e bicchiere a destra. Ruotando lo schermo la partita resta intatta. I vassoi pieni si possono scorrere.',
   'Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.': 'Tocca un dado per spostarlo nell’ultimo vassoio usato, all’inizio quello inferiore. Toccalo di nuovo per riportarlo indietro. Trascinalo per scegliere il vassoio superiore o inferiore.',
   'Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.': 'Modificare i dadi: tieni premuto. Senza tenere premuto: scegli «Modifica dado» in Accessibilità, poi tocca un dado.',
@@ -536,6 +569,13 @@ const italian = {
   'License': 'Licenza',
   'MIT license. The source code is on GitHub.': 'Licenza MIT. Il codice sorgente è su GitHub.',
   'View source code': 'Vedere il codice sorgente',
+  '3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.': '3D: trascina per sollevare e rilascia per lasciar cadere. Tieni premuto Maiusc o usa un secondo dito per ruotare.',
+  '3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.': 'La vista 3D richiede WebGL2. Scegli 2D nelle Impostazioni, oppure attiva l’accelerazione grafica e ricarica.',
+  'Shift + arrow keys rotate picked-up dice.': 'Maiusc + le frecce ruotano i dadi sollevati.',
+  'Dice display': 'Visualizzazione dei dadi',
+  '2D': '2D',
+  '3D': '3D',
+  '2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.': '2D: leggera, ideale per dispositivi meno recenti. 3D: dadi fisici, richiede WebGL2.',
 };
 const dutch = {
   'Dice': 'Dobbelstenen',
@@ -579,6 +619,7 @@ const dutch = {
   'Off': 'Uit',
   'Spin': 'Draaien',
   'Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.': 'Standaard: Beker – verzamelen en uitgooien met een lichte bewegingsonscherpte. Het totaal verschijnt zodra de dobbelstenen eruit vliegen. Draaien: de dobbelstenen blijven op tafel.',
+  'Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.': 'Beker: gooi dobbelstenen op tafel. Draaien: een lagere worp. Resultaten verschijnen zodra de dobbelstenen stilliggen.',
   'Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.': 'Liggend: dobbelstenen links, vakken en beker rechts. Bij draaien blijft je ronde behouden. Volle vakken kun je scrollen.',
   'Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.': 'Tik op een dobbelsteen om hem naar het laatst gebruikte vak te verplaatsen, eerst het onderste. Tik nogmaals om hem terug te leggen. Sleep om het bovenste of onderste vak te kiezen.',
   'Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.': 'Dobbelstenen bewerken: ingedrukt houden. Zonder ingedrukt houden: kies „Dobbelsteen bewerken” onder Toegankelijkheid en tik op een dobbelsteen.',
@@ -640,6 +681,13 @@ const dutch = {
   'License': 'Licentie',
   'MIT license. The source code is on GitHub.': 'MIT-licentie. De broncode staat op GitHub.',
   'View source code': 'Broncode bekijken',
+  '3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.': '3D: sleep om op te pakken, laat los om neer te leggen. Houd Shift ingedrukt of gebruik een tweede vinger om te draaien.',
+  '3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.': 'De 3D-weergave vereist WebGL2. Kies 2D in Instellingen, of schakel grafische versnelling in en laad opnieuw.',
+  'Shift + arrow keys rotate picked-up dice.': 'Shift + pijltjestoetsen draaien opgepakte dobbelstenen.',
+  'Dice display': 'Weergave van dobbelstenen',
+  '2D': '2D',
+  '3D': '3D',
+  '2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.': '2D: licht, ideaal voor oudere apparaten. 3D: fysieke dobbelstenen, vereist WebGL2.',
 };
 const polish = {
   'Dice': 'Kości',
@@ -683,6 +731,7 @@ const polish = {
   'Off': 'Wyłączony',
   'Spin': 'Obrót',
   'Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.': 'Domyślnie: Kubek – zbierz i rzuć z lekkim rozmyciem ruchu. Suma pojawia się, gdy kości wylatują. Obrót: kości zostają na stole.',
+  'Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.': 'Kubek: rzuć kośćmi na stół. Obrót: niższy rzut. Wyniki pojawiają się, gdy kości się zatrzymają.',
   'Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.': 'Poziomo: kości po lewej, tace i kubek po prawej. Obrót ekranu zachowuje rundę. Pełne tace można przewijać.',
   'Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.': 'Dotknij kości, aby przenieść ją na ostatnio używaną tacę, na początku dolną. Dotknij ponownie, aby ją zwrócić. Przeciągnij, aby wybrać górną lub dolną tacę.',
   'Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.': 'Edycja kości: przytrzymaj. Bez przytrzymania: wybierz „Edytuj kość” w sekcji Dostępność, a potem dotknij kości.',
@@ -744,6 +793,13 @@ const polish = {
   'License': 'Licencja',
   'MIT license. The source code is on GitHub.': 'Licencja MIT. Kod źródłowy jest na GitHubie.',
   'View source code': 'Zobacz kod źródłowy',
+  '3D: drag to pick up and release to drop. Shift-drag or drag with a second finger to rotate.': '3D: przeciągnij, aby podnieść, puść, aby upuścić. Przytrzymaj Shift lub użyj drugiego palca, aby obracać.',
+  '3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.': 'Widok 3D wymaga WebGL2. Wybierz 2D w Ustawieniach albo włącz przyspieszenie graficzne i odśwież stronę.',
+  'Shift + arrow keys rotate picked-up dice.': 'Shift + strzałki obracają podniesione kości.',
+  'Dice display': 'Wyświetlanie kości',
+  '2D': '2D',
+  '3D': '3D',
+  '2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.': '2D: lekki, idealny dla starszych urządzeń. 3D: fizyczne kości, wymaga WebGL2.',
 };
 export const translations = { de: german, fr: french, es: spanish, pt: portuguese, it: italian, nl: dutch, pl: polish };
 const table = translations[language] ?? {};
