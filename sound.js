@@ -6,7 +6,7 @@ const buffers = {};
 export function loadSounds() {
   if (context) return;
   context = new AudioContext();
-  for (const name of ['throw', 'shuffle', 'click'])
+  for (const name of ['throw', 'shuffle', 'click', 'cup'])
     fetch(`sounds/${name}.mp3`).then(r => r.arrayBuffer()).then(b => context.decodeAudioData(b)).then(b => { buffers[name] = b; }).catch(() => {});
 }
 

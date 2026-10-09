@@ -51,6 +51,8 @@ export class DiceScene {
     this.onSettle = null;
     this.onError = null;
     this.onFlickRandomize = null;
+    this.onImpact = null;
+    this.impacts = (type, speed, a, b) => this.onImpact?.(type, speed, a, b);
     this.rect = table.getBoundingClientRect();
     this.frame = time => this.tick(time);
     this.lost = () => {
@@ -225,7 +227,7 @@ export class DiceScene {
     if (moving) {
       this.accumulator += dt;
       while (this.accumulator >= 1 / 120) {
-        step(this.active, 1 / 120, this.bounds, this.gravity);
+        step(this.active, 1 / 120, this.bounds, this.gravity, this.impacts);
         this.accumulator -= 1 / 120;
       }
       moving = this.active.some(body => !body.sleeping || body.held);

@@ -84,7 +84,11 @@ export function orientValue(body, value) {
 // The table top is y = 0 and walls are infinitely high. Held bodies chase held.target with spin held.ang and keep that
 // velocity when released. Returns whether anything still moves.
 let stamp = 0;
-export function step(bodies, dt, bounds, gravity = DOWN) {
+// Prototype contact sounds: `onImpact(type, speed, a, b)` fires once per new hard contact before any
+// impulse is applied, so `speed` is the real closing velocity. type: 'die' (a = other die) | 'table'.
+let impactHook = null, simTime = 0;
+export function step(bodies, dt, bounds, gravity = DOWN, onImpact = null) {
+  impactHook = onImpact;
   // A sleeping die wakes when a die it rested against is gone (dead or no longer simulated).
   stamp++;
   for (const b of bodies) b.stamp = stamp;
@@ -111,6 +115,7 @@ function rouse(b) {
 }
 
 function substep(bodies, dt, bounds, gravity) {
+  simTime += dt;
   const gx = GRAVITY * gravity[0] * dt, gy = GRAVITY * gravity[1] * dt, gz = GRAVITY * gravity[2] * dt;
   for (const b of bodies) {
     if (b.dead) continue;
@@ -237,6 +242,10 @@ function addContact(a, b, px, py, pz, nx, ny, nz, s, material, dt) {
   c.kn = mass(c, nx, ny, nz); c.kt1 = mass(c, tx, ty, tz); c.kt2 = mass(c, c.t2x, c.t2y, c.t2z);
   relVel(c);
   const vn = rvx * nx + rvy * ny + rvz * nz;
+  if (impactHook && vn < -3) {
+    if (a) impactHook('die', -vn, a, b);
+    else if (simTime - (b.lastImpact ?? -1) > 0.045) { b.lastImpact = simTime; impactHook('table', -vn); }
+  }
   // Impacts reaching contact within this substep bounce; otherwise close the gap without bouncing.
   c.target = vn < -BOUNCE && s + vn * dt < 0 ? -material.e * vn : s > 0 ? -s / dt : 0;
   c.ln = c.lt1 = c.lt2 = 0;

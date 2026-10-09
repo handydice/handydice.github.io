@@ -3,6 +3,7 @@ import { LANGUAGE_KEY, diceName, dieType, languagePreference, localize, t } from
 import { fitDice } from './layout.js';
 import { HISTORY_LIMIT, STATE_KEY, THEME_KEY, loadState, saveState } from './state.js';
 import { loadSounds, playSound, resumeSounds } from './sound.js';
+import { loadContacts, resumeContacts, impact } from './sound-prototype.js';
 import { watchViewport } from './viewport.js';
 
 localize(document);
@@ -77,6 +78,7 @@ async function startScene() {
   try { scene = new DiceScene(canvas, tableEl); }
   catch (error) { showRenderError(error); return; }
   scene.onError = showRenderError;
+  scene.onImpact = (type, speed, a, b) => { if (state.sound) impact(type, speed, a, b); };
   let lastFlickDie = null;
   if (new URLSearchParams(location.search).has('debug')) scene.onFlickRandomize = (die, triggered) => {
     if (!triggered) lastFlickDie = die;
@@ -504,7 +506,8 @@ async function doRoll(shaken = false) {
   if (flat) document.body.classList.toggle('classic', classic);
   const cup = !calm && !shaken && !classic;
   // Cup sound only with the cup animation; when shaken, the rattle already played.
-  if (cup) sound('throw');
+  // 3D: the cup cut without recorded table impacts — physics-triggered contact sounds cover those.
+  if (cup) sound(flat ? 'throw' : 'cup');
   else if (!shaken) sound('shuffle'); // spin and reduced motion rattle on the roll
   try {
     if (flat && cup) {
@@ -829,6 +832,7 @@ onPick($('#sound'), 'sound', value => {
   state.sound = value === 'on';
   if (state.sound) {
     loadSounds();
+    loadContacts();
     resumeSounds();
   }
   commit();
@@ -911,7 +915,7 @@ addEventListener('click', () => {
 
 // Startup
 
-if (state.sound) loadSounds();
+if (state.sound) { loadSounds(); loadContacts(); }
 watchViewport(sizeChanged => {
   if (sizeChanged) {
     interrupt();

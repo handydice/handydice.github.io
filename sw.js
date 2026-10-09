@@ -2,7 +2,7 @@
 const CACHE = 'handydice-2d-3d-v9';
 const ASSETS = [
   './', './index.html', './style.css',
-  './app.js', './dice.js', './layout.js', './i18n.js', './sound.js', './state.js', './viewport.js',
+  './app.js', './dice.js', './layout.js', './i18n.js', './sound.js', './sound-prototype.js', './state.js', './viewport.js',
   './dice3d.js', './physics3d.js', './renderer3d.js', './scene3d.js',
   './manifest.de.webmanifest', './manifest.en.webmanifest', './manifest.fr.webmanifest', './manifest.es.webmanifest', './manifest.pt.webmanifest',
   './manifest.it.webmanifest', './manifest.nl.webmanifest', './manifest.pl.webmanifest', './icon.svg', './icon-192.png', './icon-512.png',
@@ -13,6 +13,7 @@ const ASSETS = [
   './backgrounds/casino.webp', './backgrounds/oak.webp', './backgrounds/crafts.webp',
   './backgrounds/bluewood.webp', './backgrounds/terracotta.webp',
   './sounds/throw.mp3', './sounds/shuffle.mp3', './sounds/click.mp3',
+  './sounds/cup.mp3', './sounds/contact-table.wav', './sounds/contact-die.wav',
   './skins/opal/face.webp', './skins/opal/pips.webp', './skins/wood/face.webp', './skins/wood/pips.webp',
   './skins/galaxy/face.webp', './skins/galaxy/pips.webp', './skins/jade/face.webp', './skins/jade/pips.webp',
   './skins/amber/face.webp', './skins/amber/pips.webp', './skins/terrazzo/face.webp', './skins/terrazzo/pips.webp',
