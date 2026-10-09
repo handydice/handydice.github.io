@@ -221,15 +221,20 @@ float sphereShadow(vec3 ro, vec3 rd, vec4 s) { // Quilez: soft shadow of a spher
   return t < 0. ? 1. : smoothstep(0., 1., 5. * d / t);
 }
 void main() {
-  float vis = uMode == 0 ? pcf(vShadow) : 1., ao = 1.;
+  // The ground covers the whole canvas; only fragments near a die's shadow need the 12 shadow-map taps.
+  // A die (radius ≤ 1.5·occ) projects along the key light within 1.75 radii of its shadow foot, +PCF blur.
+  float vis = 1., ao = 1.;
+  bool near = false;
   for (int i = 0; i < ${MAX_OCC}; i++) {
     if (i >= uOccN) break;
     vec4 o = uOcc[i];
     vec3 d = o.xyz - vWorld;
     float l = length(d);
     if (uMode == 1) vis = min(vis, sphereShadow(vWorld, uKeyDir, o));
+    else if (length(o.xz - uKeyDir.xz * (o.y / uKeyDir.y) - vWorld.xz) < 2.7 * o.w + .15) near = true;
     ao *= 1. - clamp(o.w * o.w / (l * l) * max(d.y / l, 0.), 0., 1.);
   }
+  if (near) vis = pcf(vShadow);
   float a = clamp((1. - vis) * uStrength.x + (1. - ao) * uStrength.y, 0., .85);
   if (uMode == 1) a *= 1. - smoothstep(.5, 1., length(vQuad)); // previews: no quad edge
   outColor = vec4(0, 0, 0, a);
@@ -366,6 +371,7 @@ export class DiceRenderer {
     this.accent = linear([255, 176, 46]);
     this.tableColor = '#12141a';
     this.view = { left: 0, top: 0, dpr: 1 };
+    this.box = null; // canvas client rect; measure() refreshes it on layout changes, never per frame
     this.cam = {};
     this.mat = { model: new Float32Array(16), view: new Float32Array(16), proj: new Float32Array(16), vp: new Float32Array(16), light: new Float32Array(16), shadow: new Float32Array(16) };
     this.occ = new Float32Array(MAX_OCC * 4);
@@ -734,11 +740,14 @@ export class DiceRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
+  measure() { return (this.box = this.canvas.getBoundingClientRect()); }
+
   // Draws the whole frame: table dice framed onto tableRect, then each tray preview { body, rect, clip? }.
   render(tableBodies, tableRect, bounds, previews = []) {
     const { gl, canvas } = this;
     if (!gl || gl.isContextLost()) return;
-    const box = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, DPR_MAX);
+    // Reading the rect here would force a synchronous layout every frame (placeTargets wrote styles).
+    const box = this.box ?? this.measure(), dpr = Math.min(devicePixelRatio || 1, DPR_MAX);
     Object.assign(this.view, { left: box.left, top: box.top, width: box.width, height: box.height, dpr });
     const W = Math.max(1, Math.round(box.width * dpr)), H = Math.max(1, Math.round(box.height * dpr));
     if (canvas.width !== W) canvas.width = W;

@@ -133,6 +133,7 @@ export class DiceScene {
   layout() {
     const old = this.bounds, oldRect = this.rect;
     this.rect = this.table.getBoundingClientRect();
+    this.renderer.measure();
     const ratio = Math.max(0.4, this.rect.width / Math.max(1, this.rect.height));
     // Large screens add rolling space instead of magnifying the dice.
     const half = 2.7 * Math.max(1, Math.min(this.rect.width, this.rect.height) / 512);

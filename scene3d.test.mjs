@@ -113,7 +113,7 @@ for (const heightChange of [0, -0.001]) {
     table: { getBoundingClientRect: () => rect },
     topTray: { classList: { contains: () => true } },
     bottomTray: { classList: { contains: () => true } },
-    renderer: { setSurface() {} }, refreshEntries() {}, placeTargets() {}, invalidate() {},
+    renderer: { setSurface() {}, measure() {} }, refreshEntries() {}, placeTargets() {}, invalidate() {},
   });
   scene.sync([die], new Map());
   assert.deepEqual(body.quat, pose.quat, 'final commit must not straighten the die');
@@ -131,7 +131,7 @@ for (const [width, height] of [[300, 600], [1200, 600], [2400, 400], [1200, 1200
     table: { getBoundingClientRect: () => rect },
     topTray: { classList: { contains: () => true } },
     bottomTray: { classList: { contains: () => true } },
-    refreshEntries() {}, placeTargets() {}, invalidate() {},
+    renderer: { measure() {} }, refreshEntries() {}, placeTargets() {}, invalidate() {},
   });
   scene.layout();
   assert(Math.abs(scene.bounds.x / scene.bounds.z - width / height) < 1e-10,
