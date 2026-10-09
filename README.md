@@ -54,19 +54,30 @@ Settings → **Dice display** switches between the original 2D view and physical
 initializes WebGL; switching back to it stops the simulation and releases the 3D graphics resources.
 3D requires WebGL2. Both views share dice, trays, colors, sets, history and other settings.
 
-In 3D, drag gently to move a die without changing its visible value. Shift-drag, a second finger,
-or Shift + arrow keys rotate a picked-up die. Light throws retain the existing numbering and
-land according to physics. A free thrown die receives fresh cryptographic numbering once its
-tumbling speed reaches 16 radians/s (about 2.5 revolutions/s); fast translation or yaw alone
-does not trigger this. `MOVE_SPEED` and `RANDOMIZE_SPIN` in `scene3d.js` are calibration values.
+In 3D, drag gently to move a die without changing its visible value. Held dice follow hand motion
+with a smoothed, slight tilt; the angle is limited by the current face's geometry, including D100.
+A plain flick gives rolling spin in the direction of the gesture, without Shift or a second finger.
+Release velocity and spin grow smoothly with gesture speed instead of jumping at the movement
+threshold. Initial flick spin is capped at 18 radians/s (about 2.9 revolutions/s). The pickup motor
+does not launch dice upward on release, and a gentle drop does not snap the held orientation.
+Speed comes from pointer movement, so even a flick between physics frames works. Pausing before
+release drops the die without a flick impulse. Shift-drag, a second finger, or Shift + arrow keys
+rotate a picked-up die explicitly. Light throws retain the existing numbering and land according
+to physics. A free thrown die receives fresh cryptographic numbering once its tumbling speed
+reaches 16 radians/s (about 2.5 revolutions/s); yaw alone does not trigger this.
+`MOVE_SPEED`, `FLICK_SPEED`, `MAX_FLICK_SPIN` and `RANDOMIZE_SPIN` in `scene3d.js` are calibration values.
 Moving a die into a tray always preserves its stored value. Taps and keyboard returns choose
 free table positions, while a pointer drop respects the chosen position.
 
-Tilt your phone to tilt the 3D table: gravity, the die's geometry and contact friction determine
-whether it rolls or slides. Tray dice stay locked; tilting never renumbers dice or triggers
-shake-to-roll. 2D keeps shake-to-roll. The simulated slope is capped at 75° to prevent off-table
-falls. Empty upper and lower trays independently extend the playable area; occupied trays
-restore their own boundary. Finishing a throw preserves the resting position and orientation.
+Settings → **Table tilt** enables phone-controlled table inclination. It is **off by default**
+and saved on this device. Off keeps gravity perpendicular to the table, even on an upright phone,
+and immediately levels an already tilted table. Orientation permission is requested only when tilt is
+enabled; denied permission leaves it off. When enabled, gravity, the die's geometry and contact
+friction determine whether it rolls or slides. Tray dice stay locked; tilting never renumbers
+dice or triggers shake-to-roll. 2D keeps shake-to-roll. The simulated slope is capped at 75° to
+prevent off-table falls. Empty upper and lower trays independently extend the playable area;
+occupied trays restore their own boundary. Finishing a throw preserves the resting position
+and orientation.
 
 The Roll button assigns fresh cryptographic numbering **before** each 3D throw.
 Opposite-number pairs are shuffled and independently flipped, making every physical face uniform
@@ -119,8 +130,12 @@ Dice rules, geometry, physics, tray transitions, saved state, 2D layout and lang
 with `node:assert`. Tests also check all translations and service-worker precaching. Browser smoke:
 switch 2D → 3D → 2D without changing the round; rotate a picked-up die and store it without changing
 its value; return several tray dice without overlap; reload and switch views offline. Also check
-both empty-tray extensions, gentle movement, light and fast-tumbling throws, and tilt with a
-locked tray die. Real-device sensor permission and threshold calibration need a phone.
+both empty-tray extensions, value-preserving hand tilt, gentle drops, medium and strong plain flicks,
+and tilt with a locked tray die. Slow-to-fast gestures must have a gradual transition without
+an upward pickup-motor launch or a release snap.
+Check that upright-phone orientation events do nothing with tilt off, that turning it off levels
+the table, and that both toggle states survive reload. Real-device sensor permission and threshold
+calibration need a phone.
 
 New language: add its code to `LANGUAGES`, a table to `translations` in `i18n.js`, a
 `manifest.<code>.webmanifest`, and a button in `#language` (`index.html`).

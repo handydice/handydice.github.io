@@ -62,7 +62,7 @@ for (const autoPlace of [false, true]) {
   blocker.die = { sides: 6, value: 1 };
   const scene = Object.assign(Object.create(DiceScene.prototype), {
     bounds: { x: 2.7, z: 4.4 }, bodies: new Map([[die, body], [blocker.die, blocker]]),
-    grip: { body, originalTray: 'b1' }, refreshEntries() {}, invalidate() {},
+    grip: { body, originalTray: 'b1', vx: 0, vz: 0, lastMotion: performance.now() }, refreshEntries() {}, invalidate() {},
   });
   scene.endGrip(die, false, autoPlace);
   if (autoPlace) {
@@ -131,7 +131,7 @@ for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   body.pos[1] = 1.6; body.vel[0] = 1.9;
   body.held = { target: [...body.pos], ang: [0, 0, 0] };
   const scene = Object.assign(Object.create(DiceScene.prototype), {
-    grip: { body }, refreshEntries() {}, invalidate() {},
+    grip: { body, vx: 1.9, vz: 0, lastMotion: performance.now() }, refreshEntries() {}, invalidate() {},
   });
   scene.endGrip(die);
   for (let i = 0; i < 600; i++) {
@@ -142,13 +142,134 @@ for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   assert(body.sleeping, `D${sides}: gentle drop comes to rest`);
 }
 
-// Fast translation or yaw leaves labels readable; fast tumbling randomizes once.
+// Plain flicks get rolling spin even when released before the next physics frame.
+{
+  const originalNow = performance.now;
+  let now = 0;
+  performance.now = () => now;
+  try {
+    for (const advance of [false, true]) {
+      for (const [vx, vz, pause, tray, cancel, delayedGrab] of [
+        [1.9, 0, 0], [2.1, 0, 0], [8, 0, 0], [-8, 0, 0], [0, 8, 0], [0, -8, 0],
+        [8, 0, 100], [8, 0, 0, true], [8, 0, 0, false, true],
+        [1.9, 0, 0, false, false, true],
+      ]) {
+        const die = { sides: 6, value: 1 }, body = makeBody(buildDie(6), [0, 1, 0]);
+        body.die = die; orientValue(body, 1); body.pos[1] = advance ? body.shape.inradius : 1.6;
+        const scene = Object.assign(Object.create(DiceScene.prototype), {
+          bodies: new Map([[die, body]]), bounds: { x: 10, z: 10 },
+          renderer: { unproject: (x, y) => [x, 1.6, y] },
+          refreshEntries() {}, invalidate() {},
+        });
+        now = delayedGrab ? 100 : 0; scene.beginGrip(die, 0, 0, 0);
+        now = 100; scene.moveGrip(vx / 10, vz / 10, vx / 10, vz / 10);
+        if (advance) step([body], 1 / 120, scene.bounds);
+        now += pause;
+        if (tray) die.tray = 't1';
+        scene.endGrip(die, cancel);
+        assert(body.vel[1] <= 0, 'releasing cannot inherit upward velocity from the pickup motor');
+        const speed = Math.hypot(vx, vz);
+        if (speed >= 2 && !pause && !tray && !cancel) {
+          assert(Math.hypot(body.ang[0], body.ang[2]) > 0,
+            'a plain flick imparts tumbling spin without requiring a physics frame');
+          const quat = [...body.quat];
+          step([body], 1 / 30, scene.bounds);
+          assert.notDeepEqual(body.quat, quat, 'the flick visibly rotates the die in flight');
+        } else {
+          assert.equal(Math.hypot(...body.ang), 0, 'gentle, paused, stored or cancelled drags add no spin');
+          assert.equal(readValue(body.shape, mat3(body.quat)), 1, 'the visible value is preserved');
+        }
+      }
+    }
+  } finally { performance.now = originalNow; }
+}
+
+// Release motion grows continuously from a gentle drop to a bounded strong flick.
+{
+  const originalNow = performance.now;
+  let now = 0, previousSpin = 0, previousSpeed = 0;
+  performance.now = () => now;
+  try {
+    for (const speed of [0, 1.9, 2, 2.01, 2.1, 3, 5, 8, 12, 20, 200]) {
+      const die = { sides: 6, value: 1 }, body = makeBody(buildDie(6), [0, 1.6, 0]);
+      body.die = die; orientValue(body, 1); body.pos[1] = 1.6;
+      const scene = Object.assign(Object.create(DiceScene.prototype), {
+        bodies: new Map([[die, body]]), bounds: { x: 100, z: 100 },
+        active: [body], tableBodies: [body], lastTime: 0, accumulator: 0,
+        renderer: { unproject: (x, y) => [x, 1.6, y] },
+        refreshEntries() {}, invalidate() {}, draw() {},
+      });
+      now = 0; scene.beginGrip(die, 0, 0);
+      now = 100; scene.moveGrip(speed / 10, 0, speed / 10, 0);
+      scene.endGrip(die);
+      const spin = Math.hypot(body.ang[0], body.ang[2]), velocity = Math.hypot(body.vel[0], body.vel[2]);
+      assert(spin >= previousSpin && velocity >= previousSpeed, 'stronger gestures do not produce weaker throws');
+      assert(spin <= 18, 'even an extreme flick has bounded initial spin');
+      if (speed <= 2) assert.equal(spin, 0, 'gentle placement adds no release spin');
+      if (speed === 2.1) assert(spin < 0.1 && velocity < 0.1, 'crossing the movement threshold cannot launch a sudden fast throw');
+      if (speed === 8) assert(spin > 1 && spin < 8, 'a medium flick has moderate spin');
+      if (speed >= 20) assert(spin >= 16, 'a deliberate strong flick can still trigger fair randomization');
+      if (speed === 20) {
+        body.pos[1] = body.shape.inradius;
+        const originalRandom = crypto.getRandomValues;
+        let draws = 0;
+        crypto.getRandomValues = array => { draws++; return array.fill(0); };
+        try {
+          scene.tick(116);
+          assert(draws > 0, 'a strong floor-level flick cannot lose its randomization to contact damping');
+        } finally { crypto.getRandomValues = originalRandom; }
+      }
+      previousSpin = spin; previousSpeed = velocity;
+    }
+  } finally { performance.now = originalNow; }
+}
+
+// Hand motion tilts the held mesh, but never changes its face or snaps on gentle release.
+{
+  const originalNow = performance.now;
+  let now = 0;
+  performance.now = () => now;
+  try {
+    for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
+      const die = { sides, value: 1 }, body = makeBody(buildDie(sides), [0, 1.6, 0]);
+      body.die = die; body.faceValues = Uint8Array.from({ length: sides }, (_, i) => sides - i);
+      orientValue(body, sides); body.pos[1] = 1.6;
+      const originalQuat = [...body.quat];
+      const scene = Object.assign(Object.create(DiceScene.prototype), {
+        bodies: new Map([[die, body]]), bounds: { x: 10, z: 10 },
+        active: [body], tableBodies: [body], lastTime: 0, accumulator: 0,
+        renderer: { unproject: (x, y) => [x, 1.6, y] },
+        refreshEntries() {}, invalidate() {}, draw() {},
+      });
+      now = 0; scene.beginGrip(die, 0, 0);
+      now = 100; scene.moveGrip(0.15, 0, 0.15, 0);
+      for (let i = 0; i < 30; i++) {
+        now = 100 + i * 16; scene.tick(now);
+        assert.equal(body.faceValues[readValue(body.shape, mat3(body.quat)) - 1], 1, `D${sides}: hand motion preserves the visible face`);
+      }
+      assert.notDeepEqual(body.quat, originalQuat, `D${sides}: the held die is not perfectly planar`);
+      const heldQuat = [...body.quat];
+      scene.endGrip(die);
+      assert.deepEqual(body.quat, heldQuat, `D${sides}: releasing does not snap away the hand tilt`);
+      for (let i = 0; i < 600; i++) {
+        step([body], 1 / 120, scene.bounds);
+        assert.equal(body.faceValues[readValue(body.shape, mat3(body.quat)) - 1], 1, `D${sides}: gentle landing preserves the face`);
+        if (body.sleeping) break;
+      }
+      assert(body.sleeping, `D${sides}: the tilted gentle drop settles`);
+    }
+  } finally { performance.now = originalNow; }
+}
+
+// Fast yaw leaves labels readable; fast tumbling randomizes once.
 {
   const die = { sides: 6, value: 1 }, body = makeBody(buildDie(6), [0, 1, 0]);
   body.die = die; body.faceValues = Uint8Array.from([6, 5, 4, 3, 2, 1]);
-  orientValue(body, 6); body.pos[1] = 3; body.vel[0] = 8;
+  orientValue(body, 6); body.pos[1] = 3;
+  body.held = { target: [...body.pos], ang: [0, 30, 0] };
   const scene = Object.assign(Object.create(DiceScene.prototype), {
-    grip: { body }, bodies: new Map([[die, body]]), active: [body], tableBodies: [body],
+    grip: { body, rotated: true, vx: 0, vz: 0, lastMotion: performance.now() },
+    bodies: new Map([[die, body]]), active: [body], tableBodies: [body],
     bounds: { x: 10, z: 10 }, lastTime: 0, accumulator: 0,
     refreshEntries() {}, invalidate() {}, draw() {},
   });
@@ -157,7 +278,7 @@ for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   crypto.getRandomValues = array => { draws++; return array.fill(0); };
   try {
     scene.endGrip(die);
-    assert.equal(draws, 0, 'fast straight release does not alter readable labels');
+    assert.equal(draws, 0, 'release does not renumber before fast tumbling');
     body.ang[1] = 30;
     scene.tick(16);
     assert.equal(draws, 0, 'fast yaw keeps the readable upper face');
@@ -200,6 +321,9 @@ for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   const gravity = [...scene.gravity];
   scene.setTilt(null, 0);
   assert.deepEqual(scene.gravity, gravity, 'missing sensor readings cannot corrupt physics');
+  scene.throwing = {};
+  scene.setTilt(0, 0);
+  assert.deepEqual(scene.gravity, [0, -1, 0], 'disabling tilt levels the table even during a throw');
 }
 
 console.log('scene3d tray values ok');

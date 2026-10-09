@@ -347,7 +347,7 @@ dialog button { display: flex; align-items: center; justify-content: center; gap
 .head button { width: 3rem; padding: 0; font-size: 1.3rem; }
 .head .back { font-size: 1.7rem; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
-#animation, #sound, #surface, #language { grid-template-columns: repeat(2, 1fr); }
+#animation, #sound, #tilt, #surface, #language { grid-template-columns: repeat(2, 1fr); }
 .flag { font-size: 1.3rem; line-height: 1; }
 .grid button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
 /* Table selection with preview: pre-generated 384 px thumbnails, not the full textures. */

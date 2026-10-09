@@ -206,6 +206,7 @@ function render() {
   markPressed($('#view'), 'view', state.view);
   document.documentElement.dataset.view = state.view;
   markPressed($('#sound'), 'sound', state.sound ? 'on' : 'off');
+  markPressed($('#tilt'), 'tilt', state.tilt ? 'on' : 'off');
   markPressed($('#surface'), 'surface', state.surface);
   document.documentElement.dataset.surface = state.surface;
   $('#click-mode').value = state.clickMode;
@@ -414,7 +415,7 @@ function pointerDrag(el) {
             zIndex: 10, pointerEvents: 'none',
           });
           el.classList.add('drag');
-        } else scene?.beginGrip(d, start.clientX, start.clientY);
+        } else scene?.beginGrip(d, start.clientX, start.clientY, started);
       }
       const target = dropTargetAt(ev.clientX, ev.clientY);
       const tray = target === tableEl ? undefined : target;
@@ -810,6 +811,21 @@ onPick($('#sound'), 'sound', value => {
   }
   commit();
 });
+async function requestTiltPermission() {
+  try {
+    const permission = await window.DeviceOrientationEvent?.requestPermission?.();
+    if (!permission || permission === 'granted') return;
+  } catch {}
+  state.tilt = false;
+  scene?.setTilt(0, 0);
+  commit();
+}
+onPick($('#tilt'), 'tilt', value => {
+  state.tilt = value === 'on';
+  if (state.tilt) requestTiltPermission();
+  else scene?.setTilt(0, 0);
+  commit();
+});
 markPressed($('#language'), 'language', languagePreference);
 onPick($('#language'), 'language', language => {
   localStorage.setItem(LANGUAGE_KEY, language);
@@ -862,13 +878,13 @@ addEventListener('devicemotion', e => {
   }, SHAKE_STILL_MS);
 }, { passive: true });
 addEventListener('deviceorientation', e => {
-  if (state.view !== '3d' || rolling || dialogOpen()) return;
+  if (state.view !== '3d' || !state.tilt || rolling || dialogOpen()) return;
   scene?.setTilt(e.beta, e.gamma, screen.orientation?.angle ?? window.orientation ?? 0);
 }, { passive: true });
-// iOS asks for both motion and orientation permission only after a user gesture.
+// iOS sensor permission requires a user gesture; orientation is requested only after opt-in.
 addEventListener('click', () => {
   window.DeviceMotionEvent?.requestPermission?.().catch(() => {});
-  window.DeviceOrientationEvent?.requestPermission?.().catch(() => {});
+  if (state.tilt) requestTiltPermission();
 }, { once: true });
 
 // Startup

@@ -127,6 +127,13 @@ if ('serviceWorker' in navigator) {
     </div>
     <p class="hint">2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.</p>
 
+    <h3 data-view-only="3d">Table tilt</h3>
+    <div class="grid" id="tilt" data-view-only="3d">
+      <button data-tilt="on">On</button>
+      <button data-tilt="off">Off</button>
+    </div>
+    <p class="hint" data-view-only="3d">Tilt your phone to move table dice. Off keeps the table level.</p>
+
     <h3>Roll animation</h3>
     <div class="grid" id="animation">
       <button data-animation="cup">Cup</button>
@@ -146,7 +153,7 @@ if ('serviceWorker' in navigator) {
     </select>
     <p class="hint">Two taps: select a die, then tap the top tray, bottom tray or table. Tap a tray die to insert before it. Tap the selected die again or press Esc to cancel. Drag &amp; drop remains available in both modes.</p>
     <p class="hint">Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.</p>
-    <p class="hint" data-view-only="3d">3D: drag gently to move, flick to throw. Fast spins randomize the numbers. Tilt your phone to move table dice. Shift-drag or use a second finger to rotate.</p>
+    <p class="hint" data-view-only="3d">3D: drag gently to move, flick to throw. Fast spins randomize the numbers. Enable table tilt in Settings to move dice by tilting your phone. Shift-drag or use a second finger to rotate.</p>
     <p class="hint" id="drag-help">Keyboard: Enter or Space to pick up, ↑ for top, ↓ for bottom, ← for the table. Enter to drop, Esc to cancel.</p>
     <p class="hint" id="rotate-help" data-view-only="3d">Shift + arrow keys rotate picked-up dice.</p>
 
