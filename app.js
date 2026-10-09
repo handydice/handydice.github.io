@@ -45,6 +45,11 @@ renderError.id = 'render-error';
 renderError.setAttribute('role', 'alert');
 renderError.hidden = true;
 document.body.append(renderError);
+const flickDebug = document.createElement('output');
+flickDebug.id = 'flick-debug';
+flickDebug.hidden = true;
+flickDebug.setAttribute('aria-live', 'polite');
+$('main').append(flickDebug);
 function showRenderError(error) {
   renderError.textContent = t('3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.');
   renderError.hidden = false;
@@ -72,6 +77,14 @@ async function startScene() {
   try { scene = new DiceScene(canvas, tableEl); }
   catch (error) { showRenderError(error); return; }
   scene.onError = showRenderError;
+  let lastFlickDie = null;
+  if (new URLSearchParams(location.search).has('debug')) scene.onFlickRandomize = (die, triggered) => {
+    if (!triggered) lastFlickDie = die;
+    if (die !== lastFlickDie) return;
+    flickDebug.textContent = `Last flick · D${die.sides} · Crypto: ${triggered ? 'YES' : 'NO'}`;
+    flickDebug.dataset.triggered = triggered;
+    flickDebug.hidden = false;
+  };
   scene.onSettle = () => {
     const focusedDie = document.activeElement?.die;
     commit();
@@ -90,6 +103,7 @@ function stopScene() {
   canvas?.remove();
   canvas = null;
   renderError.hidden = true;
+  flickDebug.hidden = true;
 }
 const trayEls = [...document.querySelectorAll('.tray')];
 // Every drop zone carries its tray in data-tray; '' is the table.
@@ -373,7 +387,7 @@ const trayTarget = (tray, d, x, y) => [...tray.firstElementChild.children].find(
 
 // Tap, long press and drag share the pointer. A tap with a slight swipe stays a tap: dragging starts
 // beyond DRAG_SLOP, and within the first DRAG_DELAY_MS only beyond DRAG_FAST_SLOP (a deliberate flick).
-const DRAG_SLOP = 12, DRAG_FAST_SLOP = 30, DRAG_DELAY_MS = 150;
+const DRAG_SLOP = 12, DRAG_FAST_SLOP = 30, DRAG_DELAY_MS = 150, DRAG_HINT_DELAY_MS = 200;
 function pointerDrag(el) {
   el.addEventListener('pointerdown', start => {
     const flat = state.view === '2d';
@@ -387,6 +401,15 @@ function pointerDrag(el) {
     const small = flat && parseFloat(getComputedStyle($('main')).getPropertyValue('--tray-die-size') || '3.6rem') * parseFloat(getComputedStyle(document.documentElement).fontSize) / r.width;
     const started = performance.now();
     let moved = false, lastX = start.clientX, lastY = start.clientY;
+    let hintTimer = null, hintsVisible = flat;
+    const showHints = () => {
+      const target = dropTargetAt(lastX, lastY);
+      document.body.classList.add('dragging');
+      showDropTarget(target);
+      // Compute the target without the gap, otherwise the gap pushes its own target away.
+      marker.remove();
+      if (target && target !== tableEl) target.firstElementChild.insertBefore(marker, trayTarget(target, d, lastX, lastY) ?? null);
+    };
     let rotate = start.shiftKey || start.button === 2;
     let secondPointer = null;
     el.classList.add('held'); // lift as soon as the finger is on it
@@ -408,7 +431,7 @@ function pointerDrag(el) {
       if (!moved) {
         moved = true;
         cancelSelection();
-        document.body.classList.add('dragging');
+        if (!flat) hintTimer = setTimeout(() => { hintsVisible = true; showHints(); }, DRAG_HINT_DELAY_MS);
         if (flat) {
           Object.assign(el.style, {
             position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px',
@@ -422,15 +445,13 @@ function pointerDrag(el) {
       if (flat) el.style.transform = `translate(${dx}px, ${dy}px) scale(${tray ? small : 1.08})`;
       else scene?.moveGrip(ev.clientX, ev.clientY, ev.clientX - lastX, ev.clientY - lastY, rotate || ev.shiftKey);
       lastX = ev.clientX; lastY = ev.clientY;
-      showDropTarget(target);
-      // Compute the target without the gap (as on release), otherwise the gap pushes its own target away.
-      marker.remove();
-      if (tray) tray.firstElementChild.insertBefore(marker, trayTarget(tray, d, ev.clientX, ev.clientY) ?? null);
+      if (hintsVisible) showHints();
     };
     const up = ev => {
       if (ev.pointerId === secondPointer) { secondPointer = null; rotate = start.shiftKey || start.button === 2; return; }
       if (ev.pointerId !== start.pointerId) return;
       clearTimeout(holdTimer);
+      clearTimeout(hintTimer);
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', up);
       removeEventListener('pointercancel', up);
@@ -527,6 +548,7 @@ async function doRoll(shaken = false) {
         ], { duration: 420, delay: i * 70, easing: 'cubic-bezier(.2, .8, .3, 1)', fill: 'backwards' })));
     } else {
       render();
+      flickDebug.hidden = true;
       await scene.throw(active, { calm, classic: state.animation === 'classic' });
       if (scene.failed) return; // an aborted WebGL throw is not a completed history result
     }

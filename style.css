@@ -95,6 +95,8 @@ header button:disabled { opacity: .5; cursor: default; }
 #dice .rendered-die { position: absolute; }
 .rendered-die:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 #render-error { position: fixed; inset: 35% 1rem auto; z-index: 20; padding: 1rem; background: var(--card); border: 1px solid var(--danger); border-radius: 1rem; }
+#flick-debug { position: absolute; top: calc(max(.6rem, env(safe-area-inset-top)) + 4.1rem); left: max(1rem, env(safe-area-inset-left)); z-index: 2; max-width: calc(100% - 2rem); padding: .3rem .6rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--card); color: var(--fg); font-size: .8rem; pointer-events: none; }
+#flick-debug[data-triggered="true"] { border-color: var(--accent); font-weight: 700; }
 #dice .die { width: var(--dice-size, 100%); }
 #dice .ghost { visibility: hidden; }
 /* Background: square textures for the whole app, cropped via cover in portrait and landscape.
@@ -419,7 +421,7 @@ dialog button:disabled { opacity: .5; cursor: default; }
 /* Landscape: the same trays and buttons in a right-hand sidebar. */
 @media (orientation: landscape) {
   main {
-    --tray-die-size: 2.75rem;
+    --tray-die-size: 5rem;
     display: grid; max-width: none;
     grid-template-columns: minmax(0, 1fr) clamp(13rem, 30vw, 20rem);
     grid-template-rows: auto minmax(0, 1fr); gap: var(--surface-gap);
@@ -436,6 +438,8 @@ dialog button:disabled { opacity: .5; cursor: default; }
   }
   #toptrays, #bottomtrays { display: contents; }
   .tray { min-height: 0; max-height: none; padding: .4rem; gap: .35rem; }
+  .tray .die .num { font-size: 1.875rem; }
+  .tray .die small { font-size: .7rem; }
   #total { bottom: 4rem; right: .5rem; }
   #actions { flex: none; }
   #actions button { min-height: 3.5rem; padding: .5rem .6rem; font-size: 1rem; }

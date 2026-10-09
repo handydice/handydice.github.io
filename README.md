@@ -70,8 +70,15 @@ rotate a picked-up die explicitly. Light throws retain the existing numbering an
 to physics. A free thrown die receives fresh cryptographic numbering once its tumbling speed
 reaches 16 radians/s (about 2.5 revolutions/s); yaw alone does not trigger this.
 `MOVE_SPEED`, `FLICK_SPEED`, `MAX_FLICK_SPIN` and `RANDOMIZE_SPIN` in `scene3d.js` are calibration values.
+With `?debug` in the URL, a small **Last flick · D… · Crypto: YES/NO** badge after a table release shows whether
+that die actually received fresh cryptographic numbering. It starts at **NO** and changes to
+**YES** only when renumbering runs, even if the resulting visible number stays the same.
+The badge describes the latest release, persists after settling, and clears on Roll or switching to 2D.
 Moving a die into a tray always preserves its stored value. Taps and keyboard returns choose
 free table positions, while a pointer drop respects the chosen position.
+In landscape, tray dice are 80 px across instead of 44 px, still smaller than table dice.
+3D pointer-drag tray outlines, target guidelines and insertion gaps appear only after 200 ms of dragging;
+quick flicks show none of them, but drops into a tray are recognized immediately.
 
 Settings → **Table tilt** enables phone-controlled table inclination. It is **off by default**
 and saved on this device. Off keeps gravity perpendicular to the table, even on an upright phone,
@@ -137,6 +144,10 @@ its value; return several tray dice without overlap; reload and switch views off
 both empty-tray extensions, value-preserving hand tilt, gentle drops, medium and strong plain flicks,
 and tilt with a locked tray die. Slow-to-fast gestures must have a gradual transition without
 an upward pickup-motor launch or a release snap.
+For 3D pointer gestures, check that a quick flick shows no tray hints, a held drag shows them after
+200 ms, and releasing or cancelling clears them without a delayed flash. Landscape tray dice must
+be visibly larger than before, with full trays still scrollable. The Crypto badge stays hidden unless
+the URL includes `?debug`.
 Check that upright-phone orientation events do nothing with tilt off, that turning it off levels
 the table, and that both toggle states survive reload. Real-device sensor permission and threshold
 calibration need a phone.

@@ -289,11 +289,13 @@ for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   body.die = die; body.faceValues = Uint8Array.from([6, 5, 4, 3, 2, 1]);
   orientValue(body, 6); body.pos[1] = 3;
   body.held = { target: [...body.pos], ang: [0, 30, 0] };
+  const randomizations = [];
   const scene = Object.assign(Object.create(DiceScene.prototype), {
     grip: { body, rotated: true, vx: 0, vz: 0, lastMotion: performance.now() },
     bodies: new Map([[die, body]]), active: [body], tableBodies: [body],
     bounds: { x: 10, z: 10 }, lastTime: 0, accumulator: 0,
     refreshEntries() {}, invalidate() {}, draw() {},
+    onFlickRandomize: (d, triggered) => { assert.equal(d, die); randomizations.push(triggered); },
   });
   const originalRandom = crypto.getRandomValues;
   let draws = 0;
@@ -301,21 +303,25 @@ for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   try {
     scene.endGrip(die);
     assert.equal(draws, 0, 'release does not renumber before fast tumbling');
+    assert.deepEqual(randomizations, [false], 'a release cannot report randomization before it runs');
     body.ang[1] = 30;
     scene.tick(16);
     assert.equal(draws, 0, 'fast yaw keeps the readable upper face');
     body.ang[1] = 0; body.ang[0] = 15.9;
     scene.tick(32);
     assert.equal(draws, 0, 'slow tumbling keeps numbering');
+    assert.deepEqual(randomizations, [false], 'yaw and sub-threshold tumbling must not report randomization');
     assert.equal(body.faceValues[readValue(body.shape, mat3(body.quat)) - 1], 1);
     body.ang[0] = 16;
     scene.tick(48);
     assert(draws > 0, 'fast tumbling uses the cryptographic generator');
     assert.notEqual(body.faceValues[readValue(body.shape, mat3(body.quat)) - 1], 1);
+    assert.deepEqual(randomizations, [false, true], 'the indicator follows actual cryptographic renumbering');
     const count = draws;
     body.ang[0] = 30;
     scene.tick(64);
     assert.equal(draws, count, 'only one randomization per throw');
+    assert.deepEqual(randomizations, [false, true], 'later frames cannot report another trigger for the same throw');
   } finally { crypto.getRandomValues = originalRandom; }
 }
 

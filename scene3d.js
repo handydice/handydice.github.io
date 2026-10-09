@@ -50,6 +50,7 @@ export class DiceScene {
     this.throwing = null;
     this.onSettle = null;
     this.onError = null;
+    this.onFlickRandomize = null;
     this.rect = table.getBoundingClientRect();
     this.frame = time => this.tick(time);
     this.lost = () => {
@@ -217,6 +218,7 @@ export class DiceScene {
       if (Math.hypot(body.ang[0], body.ang[2]) >= RANDOMIZE_SPIN) {
         renumber(body);
         body.randomizeOnSpin = false; // once per throw; yaw alone leaves the upper face readable
+        this.onFlickRandomize?.(body.die, true);
       } else if (body.sleeping) body.randomizeOnSpin = false;
     }
     let moving = this.active.some(body => !body.sleeping || body.held);
@@ -431,6 +433,7 @@ export class DiceScene {
       }
       body.sleeping = false; body.sleepTimer = 0;
       this.dropped = true;
+      this.onFlickRandomize?.(d, false);
     }
     this.grip = null;
     this.refreshEntries(); this.invalidate();
@@ -446,7 +449,7 @@ export class DiceScene {
     canvas.removeEventListener('webglcontextrestored', this.restored);
     document.removeEventListener('visibilitychange', this.visibility);
     this.throwing?.resolve(); this.throwing = null;
-    this.grip = null; this.onSettle = null; this.onError = null;
+    this.grip = null; this.onSettle = null; this.onError = null; this.onFlickRandomize = null;
     this.renderer.dispose();
   }
 }
