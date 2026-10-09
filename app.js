@@ -541,7 +541,7 @@ async function doRoll(shaken = false) {
 
 // Roll on release, not only on click: after a long press the browser fires contextmenu and drops the
 // click. Only a press that started on the button counts, so dropping a dragged die here does not roll.
-// click stays for keyboard and screen readers; doRoll synchronously blocks duplicate activation.
+// click is only for keyboard and screen readers: pointer clicks already rolled on release.
 let rollPress = null;
 $('#roll').onpointerdown = e => {
   if (!e.isPrimary || e.button !== 0 || e.currentTarget.disabled) return;
@@ -554,7 +554,7 @@ $('#roll').onpointerup = e => {
   doRoll();
 };
 $('#roll').onlostpointercapture = $('#roll').onpointercancel = () => { rollPress = null; };
-$('#roll').onclick = () => doRoll();
+$('#roll').onclick = e => { if (e.detail === 0) doRoll(); };
 $('#roll').oncontextmenu = e => e.preventDefault();
 $('#reset').onclick = () => {
   if (rolling) return;

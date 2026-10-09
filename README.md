@@ -87,7 +87,8 @@ npm test   # = node --test, runs every *.test.mjs
 
 Touch smoke check: tap the Roll button, then hold it for 1–3 seconds and release. Each action must add
 exactly one history entry. Enter and Space must still roll; a canceled touch or dropping a die onto
-the Roll button must not. The button uses pointer release because mobile long presses can suppress clicks.
+the Roll button must not. Pointer clicks must not add another result after an immediate reduced-motion
+3D roll; keyboard and screen-reader clicks must still roll.
 
 | File | Responsibility |
 | --- | --- |
