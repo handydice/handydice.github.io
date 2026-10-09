@@ -382,6 +382,7 @@ dialog button.danger { color: var(--danger); border-color: color-mix(in srgb, va
 #history { margin: 0; padding-left: 1.6rem; max-height: 10rem; overflow-y: auto; color: var(--muted); }
 #history:empty { display: none; }
 .hint { color: var(--muted); font-size: .85rem; margin: 1.2rem 0 0; }
+.hint a { color: var(--accent); }
 #click-mode { width: 100%; margin-top: .6rem; }
 #position button, #order button { white-space: normal; }
 #order { grid-template-columns: repeat(2, 1fr); }

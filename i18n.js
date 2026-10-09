@@ -116,6 +116,9 @@ const german = {
   'Roleplaying': 'Rollenspiel',
   'Percentile': 'Prozent',
   'Free dice roller: D6 with pips, D4–D100, trays to collect dice. Offline, no sign-up, no trackers.': 'Kostenloser Würfel: W6 mit Augen, W4–W100, Ablage zum Zusammensammeln. Offline, keine Anmeldung, keine Tracker.',
+  'License': 'Lizenz',
+  'MIT license. The source code is on GitHub.': 'MIT-Lizenz. Der Quellcode ist auf GitHub.',
+  'View source code': 'Quellcode ansehen',
 };
 const french = {
   'Dice': 'Dés',
@@ -217,6 +220,9 @@ const french = {
   'Roleplaying': 'Jeu de rôle',
   'Percentile': 'Pourcentage',
   'Free dice roller: D6 with pips, D4–D100, trays to collect dice. Offline, no sign-up, no trackers.': 'Lanceur de dés gratuit : D6 avec points, D4–D100, réserves pour regrouper les dés. Hors ligne, sans inscription, sans traqueurs.',
+  'License': 'Licence',
+  'MIT license. The source code is on GitHub.': 'Licence MIT. Le code source est sur GitHub.',
+  'View source code': 'Voir le code source',
 };
 const spanish = {
   'Dice': 'Dados',
@@ -318,6 +324,9 @@ const spanish = {
   'Roleplaying': 'Rol',
   'Percentile': 'Percentil',
   'Free dice roller: D6 with pips, D4–D100, trays to collect dice. Offline, no sign-up, no trackers.': 'Lanzador de dados gratis: D6 con puntos, D4–D100, bandejas para apartar dados. Sin conexión, sin registro, sin rastreadores.',
+  'License': 'Licencia',
+  'MIT license. The source code is on GitHub.': 'Licencia MIT. El código fuente está en GitHub.',
+  'View source code': 'Ver el código fuente',
 };
 // Brazilian Portuguese; Portugal shares the table because the language choice ignores regions.
 const portuguese = {
@@ -420,6 +429,9 @@ const portuguese = {
   'Roleplaying': 'RPG',
   'Percentile': 'Percentual',
   'Free dice roller: D6 with pips, D4–D100, trays to collect dice. Offline, no sign-up, no trackers.': 'Rolador de dados grátis: D6 com pontos, D4–D100, bandejas para separar dados. Offline, sem cadastro, sem rastreadores.',
+  'License': 'Licença',
+  'MIT license. The source code is on GitHub.': 'Licença MIT. O código-fonte está no GitHub.',
+  'View source code': 'Ver o código-fonte',
 };
 const italian = {
   'Dice': 'Dadi',
@@ -521,6 +533,9 @@ const italian = {
   'Roleplaying': 'Gioco di ruolo',
   'Percentile': 'Percentuale',
   'Free dice roller: D6 with pips, D4–D100, trays to collect dice. Offline, no sign-up, no trackers.': 'Lanciadadi gratuito: D6 con punti, D4–D100, vassoi per mettere da parte i dadi. Offline, senza registrazione, senza tracker.',
+  'License': 'Licenza',
+  'MIT license. The source code is on GitHub.': 'Licenza MIT. Il codice sorgente è su GitHub.',
+  'View source code': 'Vedere il codice sorgente',
 };
 const dutch = {
   'Dice': 'Dobbelstenen',
@@ -622,6 +637,9 @@ const dutch = {
   'Roleplaying': 'Rollenspel',
   'Percentile': 'Procent',
   'Free dice roller: D6 with pips, D4–D100, trays to collect dice. Offline, no sign-up, no trackers.': 'Gratis dobbelsteen-app: D6 met ogen, D4–D100, vakken om dobbelstenen apart te leggen. Offline, geen account, geen trackers.',
+  'License': 'Licentie',
+  'MIT license. The source code is on GitHub.': 'MIT-licentie. De broncode staat op GitHub.',
+  'View source code': 'Broncode bekijken',
 };
 const polish = {
   'Dice': 'Kości',
@@ -723,6 +741,9 @@ const polish = {
   'Roleplaying': 'RPG',
   'Percentile': 'Procent',
   'Free dice roller: D6 with pips, D4–D100, trays to collect dice. Offline, no sign-up, no trackers.': 'Darmowe kości: K6 z oczkami, K4–K100, tace do odkładania kości. Offline, bez rejestracji, bez śledzenia.',
+  'License': 'Licencja',
+  'MIT license. The source code is on GitHub.': 'Licencja MIT. Kod źródłowy jest na GitHubie.',
+  'View source code': 'Zobacz kod źródłowy',
 };
 export const translations = { de: german, fr: french, es: spanish, pt: portuguese, it: italian, nl: dutch, pl: polish };
 const table = translations[language] ?? {};
