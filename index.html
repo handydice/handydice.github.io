@@ -29,8 +29,7 @@ if ('serviceWorker' in navigator) {
 <body>
 <main>
   <header>
-    <button id="new-die" aria-haspopup="dialog" aria-label="Add die"><span class="plus" aria-hidden="true">+</span><span>Die</span></button>
-    <button id="quick" aria-haspopup="dialog"><i class="ico d6"></i>Sets</button>
+    <button id="bag-open" aria-haspopup="dialog"><i class="ico d6" aria-hidden="true"></i>Dice</button>
     <button id="open" aria-haspopup="dialog" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -59,21 +58,26 @@ if ('serviceWorker' in navigator) {
   </div>
 </main>
 
-<dialog id="quickdlg" class="screen">
+<dialog id="bag" class="screen" aria-labelledby="bag-title">
   <div>
-    <div class="head">
-      <form method="dialog"><button class="back" aria-label="Back">←</button></form>
-      <h2>Sets</h2>
-      <button id="edit-sets" aria-pressed="false" hidden>Edit</button>
+    <div class="bag-top">
+      <div class="head">
+        <form method="dialog"><button class="back" aria-label="Back">←</button></form>
+        <h2 id="bag-title">Dice</h2>
+      </div>
+      <h3><span>On the table</span> <small id="table-count"></small><button id="clear" class="link" type="button">Clear</button></h3>
+      <div id="table-dice" class="minis"></div>
+      <p id="table-empty" class="hint">Tap a die below to put it on the table.</p>
     </div>
-    <div id="sets"></div>
-    <div class="screen-footer">
-      <h3><label for="set-name">Save current dice</label></h3>
-      <form id="save-set" class="line">
-        <input id="set-name" maxlength="40" autocomplete="off">
-        <button class="primary"><span aria-hidden="true">✓</span>Save</button>
-      </form>
-    </div>
+    <h3>Add</h3>
+    <div class="palette scroller" role="group" aria-label="Color"></div>
+    <div class="die-types" role="group" aria-label="Add"></div>
+    <h3><span>Sets</span><button id="edit-sets" class="link" type="button" aria-pressed="false" hidden>Edit</button></h3>
+    <div id="sets" class="scroller"></div>
+    <form id="save-set" class="line" hidden>
+      <input id="set-name" maxlength="40" autocomplete="off" aria-label="Save current dice">
+      <button class="primary">Save</button>
+    </form>
   </div>
 </dialog>
 
@@ -141,10 +145,8 @@ if ('serviceWorker' in navigator) {
     <select id="click-mode">
       <option value="direct">Move / return immediately</option>
       <option value="select">Select, then tap the destination</option>
-      <option value="edit">Edit die</option>
     </select>
     <p class="hint">Two taps: select a die, then tap the top tray, bottom tray or table. Tap a tray die to insert before it. Tap the selected die again or press Esc to cancel. Drag &amp; drop remains available in both modes.</p>
-    <p class="hint">Edit dice: press and hold. Without holding: choose “Edit die” under Accessibility, then tap a die.</p>
     <p class="hint" data-view-only="3d">3D: drag gently to move, flick to throw. Fast spins randomize the numbers. Enable table tilt in Settings to move dice by tilting your phone. Shift-drag or use a second finger to rotate.</p>
     <p class="hint" id="drag-help">Keyboard: Enter or Space to pick up, ↑ for top, ↓ for bottom, ← for the table. Enter to drop, Esc to cancel.</p>
     <p class="hint" id="rotate-help" data-view-only="3d">Shift + arrow keys rotate picked-up dice.</p>
@@ -152,54 +154,8 @@ if ('serviceWorker' in navigator) {
     <button id="install" class="wide" hidden>Install app</button>
     <p class="hint">Works offline · no trackers · no sign-up.<br>Language: Auto follows your browser. A manual choice is saved on this device.<br>Install: Android: “Install app” (appears when Chrome offers it); iOS: Share → “Add to Home Screen”.</p>
 
-    <h3>History</h3>
-    <ol id="history"></ol>
-    <button id="clearhist" class="wide danger"><i class="ico trash" aria-hidden="true"></i>Clear history</button>
-
     <h3>License</h3>
     <p class="hint">MIT license. The source code is on GitHub. <a href="https://github.com/handydice/handydice.github.io" target="_blank" rel="noreferrer">View source code</a></p>
-  </div>
-</dialog>
-<dialog id="add-die" class="screen" aria-labelledby="add-title">
-  <div>
-    <div class="head">
-      <form method="dialog"><button class="back" aria-label="Back">←</button></form>
-      <h2 id="add-title">Add die</h2>
-    </div>
-    <form id="add-form">
-        <div class="add-fields">
-        <h3 id="add-type-label">Die type</h3>
-        <div class="die-types" role="group" aria-labelledby="add-type-label"></div>
-        <h3>Color</h3>
-        <div class="palette dicegrid" role="group" aria-label="Color"></div>
-      </div>
-      <button class="wide primary add-action" type="submit"><span aria-hidden="true">+</span>Add</button>
-    </form>
-  </div>
-</dialog>
-<dialog id="die-settings" aria-labelledby="die-title">
-  <div>
-    <form method="dialog" class="head"><h2 id="die-title">Edit die</h2><button aria-label="Close">✕</button></form>
-    <h3><label for="edit-type">Die type</label></h3>
-    <div class="line">
-      <select id="edit-type" class="die-type"></select>
-    </div>
-    <h3>Color</h3>
-    <div class="palette dicegrid" role="group" aria-label="Color"></div>
-    <h3>Position</h3>
-    <div id="position" class="grid">
-      <button data-tray="">Table</button>
-      <button data-tray="t1">Top tray</button>
-      <button data-tray="b1">Bottom tray</button>
-    </div>
-    <div id="die-order" hidden>
-      <h3>Order</h3>
-      <div id="order" class="grid">
-        <button data-step="-1">One position earlier</button>
-        <button data-step="1">One position later</button>
-      </div>
-    </div>
-    <button id="remove-die" class="wide danger"><i class="ico trash" aria-hidden="true"></i>Remove die</button>
   </div>
 </dialog>
 <script type="module" src="app.js"></script>

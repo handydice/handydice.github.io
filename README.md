@@ -32,8 +32,9 @@ the one we wanted for our own game nights:
 - **Up to 12 dice:** D4, D6 (pips or numbers), D8, D10, D12, D20 and D100.
 - **Two trays** to set dice aside between rolls, like Yahtzee or Farkle at the table. Only the dice left on the
   table are rerolled, and every tray shows its own total.
-- **Ready-made sets** for Yahtzee, That's Pretty Clever, Clever³, roleplaying (D4–D20) and percentile dice.
-  Save your own with one tap.
+- **One dice screen:** pick a color, tap a die type to put it on the table, tap a die in the table row to put it
+  back. Ready-made sets for Yahtzee, That's Pretty Clever, Clever³, roleplaying (D4–D20) and percentile dice sit
+  below; save your own with one tap.
 - **12 painted skins** (opal, galaxy, jade, amber, steel, ice, …) plus 11 plain colors, per die.
 - **5 table surfaces:** casino felt, oak, crafts, blue wood, terracotta. Light, dark or automatic theme.
 - **Feels like real dice:** a dice cup animation with sound. In 3D every landing and die-on-die
@@ -42,7 +43,7 @@ the one we wanted for our own game nights:
 - **Accessible:** full keyboard control, an optional two-tap mode instead of dragging, respects reduced motion.
 - **8 languages:** English, German, French, Spanish, Portuguese (Brazil), Italian, Dutch and Polish, following
   your browser or chosen manually.
-- **Remembers your round:** dice, trays, sets and the last 30 results survive a reload.
+- **Remembers your round:** dice, trays and sets survive a reload.
 
 <p align="center">
   <img src="screenshots/add-die.webp" width="24%" alt="Add die screen with die types and the color and skin palette">
@@ -53,7 +54,7 @@ the one we wanted for our own game nights:
 
 Settings → **Dice display** switches between the original 2D view and physical 3D dice. 2D never
 initializes WebGL; switching back to it stops the simulation and releases the 3D graphics resources.
-3D requires WebGL2. Both views share dice, trays, colors, sets, history and other settings.
+3D requires WebGL2. Both views share dice, trays, colors, sets and other settings.
 3D uses the available screen width on tablets and desktop. Larger tables add physical rolling
 space rather than magnifying dice; portrait phones and the compact 2D layout stay unchanged.
 Roll-button throws start in rows around the table center rather than near the bottom edge.
@@ -121,10 +122,10 @@ Then open http://localhost:8000. The service worker needs `localhost` or HTTPS.
 npm test   # = node --test, runs every *.test.mjs
 ```
 
-Touch smoke check: tap the Roll button, then hold it for 1–3 seconds and release. Each action must add
-exactly one history entry. Enter and Space must still roll; a canceled touch or dropping a die onto
-the Roll button must not. Pointer clicks must not add another result after an immediate reduced-motion
-3D roll; keyboard and screen-reader clicks must still roll.
+Touch smoke check: tap the Roll button, then hold it for 1–3 seconds and release. Each action must roll
+exactly once (one cup animation in 2D, one throw in 3D). Enter and Space must still roll; a canceled touch or
+dropping a die onto the Roll button must not. Pointer clicks must not roll again after an immediate
+reduced-motion 3D roll; keyboard and screen-reader clicks must still roll.
 
 | File | Responsibility |
 | --- | --- |

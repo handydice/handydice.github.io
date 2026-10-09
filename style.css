@@ -56,7 +56,7 @@ main {
 }
 /* Equal spacing between buttons, table and the two fixed tray rows. */
 header, #dice, .trays { margin-bottom: var(--surface-gap); }
-/* Header: add and set shortcuts on the left, settings on the right. */
+/* Header: dice bag on the left, settings on the right. */
 header { display: flex; justify-content: space-between; align-items: center; gap: var(--surface-gap); }
 header button {
   display: flex; align-items: center; gap: .4rem;
@@ -67,10 +67,10 @@ header button {
 /* On textures: helper buttons as lightly tinted glass so they recede next to the dice. */
 [data-surface]:not([data-surface=""]) header button { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 header button:active { transform: scale(.97); }
-#new-die, #open { flex: none; justify-content: center; }
-#new-die .plus { font-size: 1.8rem; line-height: 1; }
+#bag-open, #open { flex: none; justify-content: center; }
+#bag-open { margin-right: auto; padding: 0 1rem; }
+#bag-open .ico { width: 1.6rem; height: 1.6rem; }
 #open { width: 3.5rem; padding: 0; }
-#quick { margin-right: auto; }
 header button:disabled { opacity: .5; cursor: default; }
 #open svg { width: 1.9rem; height: 1.9rem; }
 
@@ -351,55 +351,77 @@ dialog button { display: flex; align-items: center; justify-content: center; gap
 
 /* Dice in dialogs: same look as on the table, just smaller. */
 dialog button.die { display: grid; appearance: none; min-height: 0; padding: 0; border: 0; background: var(--die); color: var(--pip); cursor: pointer; touch-action: manipulation; }
-.dicegrid { display: flex; flex-wrap: wrap; gap: .7rem; }
-.dicegrid .die { width: 3.4rem; }
-.dicegrid .die .num, .die-types .die .num { font-size: 1.35rem; }
-.dicegrid .die small, .minis .die small { font-size: .5rem; bottom: var(--type-bottom, 3%); }
+.minis { display: flex; flex-wrap: wrap; gap: .45rem; }
+.minis .die { width: 2.6rem; }
+.minis .die .num { font-size: 1.05rem; }
+.minis .die small { font-size: .5rem; bottom: var(--type-bottom, 3%); }
+/* Dice inside buttons: taps and scrolling belong to the button, not to a draggable die. */
+#bag .die { touch-action: manipulation; cursor: inherit; }
 dialog button.primary {
   background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700;
 }
 
-/* Set list scrolls independently so saving the current setup stays visible. */
-#quickdlg > div, #add-die > div { height: 100%; display: flex; flex-direction: column; }
-#sets { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-auto-rows: max-content; align-content: start; gap: .7rem; padding-bottom: .6rem; }
-.screen-footer { flex: none; padding-bottom: env(safe-area-inset-bottom); background: var(--bg); }
-.screen-footer h3 { margin-top: .6rem; }
-#edit-sets { margin-left: auto; width: auto; padding: 0 .8rem; font-size: 1.05rem; }
-dialog .preset { flex-direction: column; align-items: flex-start; gap: .55rem; width: 100%; padding: .85rem; font-weight: 700; }
-.own { display: flex; gap: .5rem; }
-.own .preset { min-width: 0; }
-.own .remove { flex: none; width: 3rem; padding: 0; }
-/* Delete: trash can and warning color. */
-dialog button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, transparent); background: color-mix(in srgb, var(--danger) 10%, var(--card)); }
-.ico.trash { -webkit-mask-image: url(icons/trash.svg); mask-image: url(icons/trash.svg); }
+/* Quiet text action at the end of a heading. */
+dialog h3 .link {
+  margin-left: auto; min-height: 2.25rem; padding: 0 .2rem;
+  background: none; border: 0; color: var(--tray-label); font-size: .95rem; font-weight: 600;
+}
+
+/* Dice bag. The table row stays on top, so every tap below shows its result there. */
+.bag-top { position: sticky; top: 0; z-index: 1; padding-bottom: .7rem; background: var(--bg); border-bottom: 1px solid var(--border); }
+.bag-top .head { position: static; }
+.bag-top h3 { min-height: 2.25rem; margin-top: 0; align-items: center; }
+#table-dice:empty { display: none; }
+#table-empty { min-height: 2.6rem; margin: 0; display: flex; align-items: center; }
+/* A die on the table: tap puts it back; the badge says so without a hint text. */
+dialog .mini { position: relative; min-height: 0; padding: 0; background: none; border: 0; border-radius: .5rem; }
+.mini::after {
+  content: "×"; position: absolute; top: -.3rem; right: -.3rem;
+  width: 1.1rem; height: 1.1rem; border-radius: 50%;
+  background: var(--fg); color: var(--bg); font-size: .85rem; font-weight: 700; line-height: 1.1rem; text-align: center;
+}
+.mini.new .die { animation: arrive .22s ease-out; }
+@keyframes arrive { from { transform: translateY(.8rem) scale(.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mini.new .die { animation: none; } }
+/* Horizontal rows that run to the screen edges: sets and colors. */
+.scroller {
+  display: flex; gap: .6rem; overflow-x: auto; scrollbar-width: none;
+  margin: 0 -1rem; padding: .4rem 1rem; scroll-padding: 0 1rem;
+}
+.scroller::-webkit-scrollbar { display: none; }
+dialog .preset {
+  flex: none; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: .5rem;
+  min-width: 7rem; max-width: 11rem; min-height: 5.6rem; padding: .7rem;
+  font-size: .9rem; font-weight: 600; text-align: left; white-space: normal;
+}
+.preset .minis { flex-wrap: nowrap; gap: .2rem; }
+.preset .minis .die { width: 1.4rem; }
+.preset .minis .die .num { font-size: .6rem; }
+.preset .minis .die small { display: none; }
+.preset .name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.25; }
+dialog .preset.save { width: 6.5rem; align-items: center; justify-content: center; text-align: center; background: none; border-style: dashed; color: var(--muted); }
+.preset.save .plus { font-size: 1.6rem; line-height: 1; }
+.own { position: relative; flex: none; display: flex; }
+dialog .own .remove {
+  position: absolute; top: -.35rem; right: -.35rem; width: 1.7rem; min-height: 1.7rem; padding: 0;
+  border: 0; border-radius: 50%; background: var(--danger); color: #fff; font-size: 1.1rem; font-weight: 700;
+}
 .line input#set-name { text-align: left; }
-.minis { display: flex; flex-wrap: wrap; gap: .45rem; }
-.minis .die { width: 2.6rem; cursor: inherit; touch-action: manipulation; }
-.minis .die .num { font-size: 1.05rem; }
 .line { display: flex; gap: .6rem; align-items: center; margin-top: .6rem; }
 .line label { color: var(--muted); }
 .line input { flex: 1; min-width: 0; text-align: center; cursor: text; }
-.die-type { flex: 1; min-width: 0; }
 .wide { width: 100%; margin-top: .6rem; }
-#add-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.add-fields { flex: 1; min-height: 0; overflow-y: auto; padding: 0 .2rem .8rem; }
-.die-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
-.die-types button { min-width: 0; flex-direction: column; white-space: normal; font-size: .85rem; }
-.die-types .die { width: 3rem; }
-.die-types button[aria-pressed="true"] { border-color: var(--accent); outline: 2px solid var(--accent); font-weight: 700; }
-.add-action { flex: none; min-height: 3.8rem; margin: .8rem 0 0; font-size: 1.2rem; }
-#history { margin: 0; padding-left: 1.6rem; max-height: 10rem; overflow-y: auto; color: var(--muted); }
-#history:empty { display: none; }
+.die-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; margin-top: .5rem; }
+dialog .die-types button { min-width: 0; min-height: 4.4rem; padding: .4rem; }
+.die-types .die { width: 2.9rem; }
+.die-types .die .num { font-size: 1.25rem; }
 .hint { color: var(--muted); font-size: .85rem; margin: 1.2rem 0 0; }
 .hint a { color: var(--accent); }
 /* Settings hints that only apply to one view. */
 :root:not([data-view="3d"]) [data-view-only="3d"], [data-view="3d"] [data-view-only="2d"] { display: none; }
 #click-mode { width: 100%; margin-top: .6rem; }
-#position button, #order button { white-space: normal; }
-#order { grid-template-columns: repeat(2, 1fr); }
-/* Colors flow with the width; tiles shrink down to 44 px so narrow phones still fit 5 per row. */
-.palette { gap: .5rem; padding: .25rem; }
-.palette .die { width: clamp(2.75rem, calc((100% - 2rem) / 5), 3.4rem); }
+#bag .palette { gap: .55rem; }
+#bag .palette .die { flex: none; width: 2.75rem; }
 .palette .die[data-color^="skin-"] { background: var(--face) center / contain no-repeat; }
 .palette .die[aria-pressed="true"] { outline: 3px solid var(--tray-label); outline-offset: 2px; }
 .palette .die[aria-pressed="true"]::after { content: "✓"; font-size: 1.6rem; font-weight: 700; }
