@@ -131,8 +131,10 @@ export class DiceScene {
   layout() {
     const old = this.bounds, oldRect = this.rect;
     this.rect = this.table.getBoundingClientRect();
-    const ratio = Math.max(0.4, Math.min(3, this.rect.width / Math.max(1, this.rect.height)));
-    this.bounds = { x: 2.7 * Math.max(1, ratio), z: 2.7 * Math.max(1, 1 / ratio) };
+    const ratio = Math.max(0.4, this.rect.width / Math.max(1, this.rect.height));
+    // Large screens add rolling space instead of magnifying the dice.
+    const half = 2.7 * Math.max(1, Math.min(this.rect.width, this.rect.height) / 512);
+    this.bounds = { x: half * Math.max(1, ratio), z: half * Math.max(1, 1 / ratio) };
     this.playTop = this.topTray.classList.contains('occupied') ? this.rect.top : this.topTray.getBoundingClientRect().top;
     this.playBottom = this.bottomTray.classList.contains('occupied') ? this.rect.top + this.rect.height : this.bottomTray.getBoundingClientRect().bottom;
     this.bounds.minZ = this.playTop === this.rect.top ? -this.bounds.z

@@ -122,6 +122,28 @@ for (const heightChange of [0, -0.001]) {
     'a wall contact or subpixel layout change must not move the die visibly');
 }
 
+// Wide tables must not retain invisible side walls from a narrower aspect ratio.
+let largePixelsPerUnit;
+for (const [width, height] of [[300, 600], [1200, 600], [2400, 400], [1200, 1200]]) {
+  const rect = { left: 0, top: 100, width, height };
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    bounds: { x: 2.7, z: 2.7 }, rect, bodies: new Map(),
+    table: { getBoundingClientRect: () => rect },
+    topTray: { classList: { contains: () => true } },
+    bottomTray: { classList: { contains: () => true } },
+    refreshEntries() {}, placeTargets() {}, invalidate() {},
+  });
+  scene.layout();
+  assert(Math.abs(scene.bounds.x / scene.bounds.z - width / height) < 1e-10,
+    'physical side walls must match the visible table proportions');
+  if (Math.min(width, height) >= 600) {
+    const pixelsPerUnit = width / (2 * scene.bounds.x);
+    if (largePixelsPerUnit) assert(Math.abs(pixelsPerUnit - largePixelsPerUnit) < 1e-10,
+      'larger tables must add room without magnifying dice');
+    largePixelsPerUnit = pixelsPerUnit;
+  }
+}
+
 // Gentle drops keep the visible result throughout the fall, for every supported shape.
 for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   const die = { sides, value: 1 }, body = makeBody(buildDie(sides), [0, 1, 0]);

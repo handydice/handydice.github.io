@@ -53,6 +53,8 @@ the one we wanted for our own game nights:
 Settings → **Dice display** switches between the original 2D view and physical 3D dice. 2D never
 initializes WebGL; switching back to it stops the simulation and releases the 3D graphics resources.
 3D requires WebGL2. Both views share dice, trays, colors, sets, history and other settings.
+3D uses the available screen width on tablets and desktop. Larger tables add physical rolling
+space rather than magnifying dice; portrait phones and the compact 2D layout stay unchanged.
 
 In 3D, drag gently to move a die without changing its visible value. Held dice follow hand motion
 with a smoothed, slight tilt; the angle is limited by the current face's geometry, including D100.
