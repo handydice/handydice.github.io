@@ -1,5 +1,5 @@
 // Bump on every release so installed clients precache the new files; sw.test.mjs checks ASSETS.
-const CACHE = 'handydice-2d-3d-v7';
+const CACHE = 'handydice-2d-3d-v8';
 const ASSETS = [
   './', './index.html', './style.css',
   './app.js', './dice.js', './layout.js', './i18n.js', './sound.js', './state.js', './viewport.js',

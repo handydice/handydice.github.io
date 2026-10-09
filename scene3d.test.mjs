@@ -348,4 +348,22 @@ for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
   assert.deepEqual(scene.gravity, [0, -1, 0], 'disabling tilt levels the table even during a throw');
 }
 
+// Roll-button throws launch around the table center, not together near the bottom.
+for (const n of [1, 5, 12]) {
+  const dice = Array.from({ length: n }, () => ({ sides: 6, value: 1 }));
+  const bodies = new Map(dice.map(d => {
+    const body = makeBody(buildDie(6), [0, 1, 0]);
+    body.die = d;
+    return [d, body];
+  }));
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    bodies, bounds: { x: 3, z: 5 }, rect: { width: 390, height: 600 },
+    refreshEntries() {}, invalidate() {},
+  });
+  scene.throw(dice);
+  const centerZ = [...bodies.values()].reduce((sum, b) => sum + b.pos[2], 0) / n;
+  assert(Math.abs(centerZ) < scene.bounds.z / 3,
+    `${n} dice: the launch group must be in the central third of the table`);
+}
+
 console.log('scene3d tray values ok');

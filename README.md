@@ -55,6 +55,8 @@ initializes WebGL; switching back to it stops the simulation and releases the 3D
 3D requires WebGL2. Both views share dice, trays, colors, sets, history and other settings.
 3D uses the available screen width on tablets and desktop. Larger tables add physical rolling
 space rather than magnifying dice; portrait phones and the compact 2D layout stay unchanged.
+Roll-button throws start in rows around the table center rather than near the bottom edge.
+Dice still settle through physics; no positions are adjusted after landing.
 
 In 3D, drag gently to move a die without changing its visible value. Held dice follow hand motion
 with a smoothed, slight tilt; the angle is limited by the current face's geometry, including D100.
