@@ -18,7 +18,7 @@ const round = {
   dice: [{ sides: 20, value: 17, tray: 't1', color: 'red', slot: 2 }, { sides: 6, value: 3, slot: 0 }],
   history: ['17 · 3 = 20'],
   sets: [{ name: 'Mine', dice: [6, 20], colors: ['blue', undefined] }],
-  lastTray: 't1', animation: 'classic', surface: 'oak', sound: false, clickMode: 'select', rerolls: 2, view: '3d', tilt: true,
+  lastTray: 't1', surface: 'oak', sound: false, clickMode: 'select', rerolls: 2, view: '3d', tilt: true,
 };
 const restoredRound = load(round);
 assert.equal(restoredRound.restored, true);
@@ -75,13 +75,12 @@ assert.equal(cleaned.lastTray, undefined);
 // Settings fall back to defaults; history and sets keep only usable entries.
 const { state: settings } = load({
   dice: [],
-  surface: 'marble', animation: 'wild', clickMode: 'drag',
+  surface: 'marble', clickMode: 'drag',
   history: ['a', 5, ...Array(HISTORY_LIMIT).fill('b')],
   sets: [{ name: 'ok', dice: [6], colors: ['nope'] }, { name: 'empty', dice: [] }, { name: 'bad', dice: [1] }, { dice: [6] }],
 });
 assert.deepEqual(settings.dice, []);
 assert.equal(settings.surface, '');
-assert.equal(settings.animation, 'cup');
 assert.equal(settings.clickMode, 'direct');
 assert.equal(settings.history.length, HISTORY_LIMIT);
 assert.equal(settings.history[0], 'a');

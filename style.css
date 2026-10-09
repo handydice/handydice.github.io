@@ -7,26 +7,26 @@
   --border: #2a3040;
   --accent: #ffb02e;
   --accent-fg: #1a1205;
-  --die: #f7f5ef;
+  --die: #edebe5;
   --pip: #191919;
   --tray-label: var(--accent);
-  --tray-bg: #ffffff1f;
+  --tray-bg: #ffffff0f;
   --danger: #ff5a5f;
   /* Ground shadow of the shaped dice. */
   --die-shadow: drop-shadow(.14rem .3rem .22rem #0006);
 }
-:root[data-theme="light"] { color-scheme: light; --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #f7f5ef; --tray-label: #855000; --tray-bg: #00000029; --danger: #c62828; }
+:root[data-theme="light"] { color-scheme: light; --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #edebe5; --tray-label: #855000; --tray-bg: #00000014; --danger: #c62828; }
 :root[data-theme="dark"] { color-scheme: dark; }
 @media (prefers-color-scheme: light) {
-  :root[data-theme="auto"] { --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #f7f5ef; --tray-label: #855000; --tray-bg: #00000029; --danger: #c62828; }
+  :root[data-theme="auto"] { --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #edebe5; --tray-label: #855000; --tray-bg: #00000014; --danger: #c62828; }
 }
 /* Primary color (cup, selection, tray borders) follows the background; without a texture it stays orange.
    Trays: lighten dark textures, darken light ones – regardless of theme. */
-:root[data-surface="casino"] { --accent: #4cd982; --accent-fg: #052e16; --tray-label: var(--accent); --tray-bg: #ffffff38; --chrome-bg: #ffffff1a; --chrome-fg: #fff; --chrome-border: #ffffff33; }
-:root[data-surface="oak"] { --accent: #4e2c13; --accent-fg: #f6e6d3; --tray-label: var(--accent); --tray-bg: #00000030; --chrome-bg: #0000002e; --chrome-fg: #fff; --chrome-border: #ffffff2e; }
-:root[data-surface="crafts"] { --accent: #2e8a93; --accent-fg: #fff; --tray-label: var(--accent); --tray-bg: #2e8a9338; --chrome-bg: #ffffff59; --chrome-fg: #2b2620; --chrome-border: #0000001a; }
-:root[data-surface="bluewood"] { --accent: #6c9fc5; --accent-fg: #0b1b28; --tray-label: var(--accent); --tray-bg: #00000030; --chrome-bg: #ffffff1a; --chrome-fg: #fff; --chrome-border: #ffffff33; }
-:root[data-surface="terracotta"] { --accent: #9c3d10; --accent-fg: #ffecd9; --tray-label: var(--accent); --tray-bg: #00000030; --chrome-bg: #ffffff59; --chrome-fg: #4a2410; --chrome-border: #0000001a; }
+:root[data-surface="casino"] { --accent: #4cd982; --accent-fg: #052e16; --tray-label: var(--accent); --tray-bg: #ffffff1c; --chrome-bg: #ffffff1a; --chrome-fg: #fff; --chrome-border: #ffffff33; }
+:root[data-surface="oak"] { --accent: #4e2c13; --accent-fg: #f6e6d3; --tray-label: var(--accent); --tray-bg: #00000018; --chrome-bg: #0000002e; --chrome-fg: #fff; --chrome-border: #ffffff2e; }
+:root[data-surface="crafts"] { --accent: #2e8a93; --accent-fg: #fff; --tray-label: var(--accent); --tray-bg: #2e8a931c; --chrome-bg: #ffffff59; --chrome-fg: #2b2620; --chrome-border: #0000001a; }
+:root[data-surface="bluewood"] { --accent: #6c9fc5; --accent-fg: #0b1b28; --tray-label: var(--accent); --tray-bg: #00000018; --chrome-bg: #ffffff1a; --chrome-fg: #fff; --chrome-border: #ffffff33; }
+:root[data-surface="terracotta"] { --accent: #9c3d10; --accent-fg: #ffecd9; --tray-label: var(--accent); --tray-bg: #00000018; --chrome-bg: #ffffff59; --chrome-fg: #4a2410; --chrome-border: #0000001a; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 /* No double-tap zoom while interacting; scrolling and pinch zoom remain possible. */
@@ -151,16 +151,16 @@ header button:disabled { opacity: .5; cursor: default; }
   cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
 }
 /* Palette also applies to quick pick, settings and trays. */
-.die[data-color="blue"] { --die: #1652f0; --pip: #fff; }
-.die[data-color="yellow"] { --die: #ffcc00; --pip: #1f2430; }
-.die[data-color="green"] { --die: #00b347; --pip: #fff; }
-.die[data-color="orange"] { --die: #ff7300; --pip: #fff; }
-.die[data-color="purple"] { --die: #7a1fff; --pip: #fff; }
-.die[data-color="white"] { --die: #f7f5ef; --pip: #171717; }
-.die[data-color="red"] { --die: #e3101e; --pip: #fff; }
-.die[data-color="brown"] { --die: #8a5a32; --pip: #fff; }
-.die[data-color="turquoise"] { --die: #00c2b8; --pip: #002826; }
-.die[data-color="pink"] { --die: #ff2d95; --pip: #fff; }
+.die[data-color="blue"] { --die: #194ed8; --pip: #fff; }
+.die[data-color="yellow"] { --die: #eec20f; --pip: #1f2430; }
+.die[data-color="green"] { --die: #0aa748; --pip: #fff; }
+.die[data-color="orange"] { --die: #e96f0a; --pip: #fff; }
+.die[data-color="purple"] { --die: #7020e4; --pip: #fff; }
+.die[data-color="white"] { --die: #edebe5; --pip: #171717; }
+.die[data-color="red"] { --die: #cb131f; --pip: #fff; }
+.die[data-color="brown"] { --die: #805633; --pip: #fff; }
+.die[data-color="turquoise"] { --die: #0cb5ac; --pip: #002826; }
+.die[data-color="pink"] { --die: #e62f8a; --pip: #fff; }
 .die[data-color="gray"] { --die: #343a46; --pip: #fff; border: 1px solid var(--border); }
 /* Skins: face.webp is the blank die including its lighting, pips.webp the same die with all seven pips.
    The mask shows only the rolled pips. On other dice (and number D6) --die/--pip are the fallback. */
@@ -268,11 +268,6 @@ header button:disabled { opacity: .5; cursor: default; }
   from { transform: translate(-3px, 2px) rotate(-7deg); }
   to { transform: translate(3px, -2px) rotate(7deg); }
 }
-.rolling.classic #dice .die:not(.ghost) { animation: wob .12s infinite alternate; }
-@keyframes wob {
-  from { transform: rotate(-9deg) scale(.96); }
-  to { transform: rotate(9deg) scale(1.02); }
-}
 @media (prefers-reduced-motion: reduce) { .die.rattle { animation: none; } }
 /* Lift on tap; while dragging the die follows the finger without delay. */
 .die.held {
@@ -297,9 +292,7 @@ header button:disabled { opacity: .5; cursor: default; }
 }
 #reset { flex: none; font-size: 1rem; background: var(--card); color: var(--fg); border: 2px solid var(--border); }
 #roll { flex: 1; display: flex; align-items: center; justify-content: center; gap: .55rem; background: var(--accent); color: var(--accent-fg); border: 0; }
-#roll:disabled { opacity: .7; }
-/* During the roll the cup stays solid; the new total appears when the dice are thrown out. */
-.rolling #roll:disabled { opacity: 1; }
+#roll:disabled { opacity: .5; cursor: default; }
 /* Flight to the side cup may cross the table boundary; body prevents scrollbars. */
 .rolling #dice { overflow: visible; z-index: 1; }
 .sum-pending #total { visibility: hidden; }
@@ -349,7 +342,7 @@ dialog button { display: flex; align-items: center; justify-content: center; gap
 .head button { width: 3rem; padding: 0; font-size: 1.3rem; }
 .head .back { font-size: 1.7rem; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
-#animation, #sound, #tilt, #surface, #language { grid-template-columns: repeat(2, 1fr); }
+#sound, #tilt, #surface, #language { grid-template-columns: repeat(2, 1fr); }
 .flag { font-size: 1.3rem; line-height: 1; }
 .grid button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
 /* Table selection with preview: pre-generated 384 px thumbnails, not the full textures. */

@@ -217,7 +217,6 @@ function render() {
     tray.lastElementChild.hidden = !dice.length;
     tray.classList.toggle('occupied', dice.length > 0);
   }
-  markPressed($('#animation'), 'animation', state.animation);
   markPressed($('#view'), 'view', state.view);
   document.documentElement.dataset.view = state.view;
   markPressed($('#sound'), 'sound', state.sound ? 'on' : 'off');
@@ -501,13 +500,11 @@ async function doRoll(shaken = false) {
   const newRound = state.dice.every(d => d.tray);
   const active = rollable(state.dice);
   const calm = reducedMotion();
-  const classic = state.animation === 'classic' && !calm;
-  if (flat) document.body.classList.toggle('classic', classic);
-  const cup = !calm && !shaken && !classic;
+  const cup = !calm && !shaken;
   // 2D cup: the recorded cup rattle and landing. 3D: physics plays every landing; no recording needed.
   // When shaken, the rattle already played.
   if (cup) { if (flat) sound('throw'); }
-  else if (!shaken) sound('shuffle'); // spin and reduced motion rattle on the roll
+  else if (!shaken) sound('shuffle'); // reduced motion rattles on the roll
   try {
     if (flat && cup) {
       // 1. Collect: the dice fly into the roll button.
@@ -526,14 +523,6 @@ async function doRoll(shaken = false) {
     // 2D: shuffled dice scatter over the table instead of each die returning to its old spot.
     compactSlots(state.dice, flat ? shuffle(active) : active);
     if (flat) {
-      // Spin animation: seven quick value changes while the dice wobble on the table.
-      if (classic) {
-        for (let i = 0; i < 7; i++) {
-          active.forEach(d => { d.value = roll(d.sides); });
-          render();
-          await new Promise(resolve => setTimeout(resolve, 70));
-        }
-      }
       active.forEach(d => { d.value = roll(d.sides); });
       render();
       document.body.classList.remove('sum-pending');
@@ -541,7 +530,7 @@ async function doRoll(shaken = false) {
       //    After shaking they hop up in place and land instead. No filter keyframes: WebKit (iOS) renders
       //    an animated filter blurry with an oversized shadow and pops to the sharp die when it ends.
       const out = [...tableEl.children].filter(el => active.includes(el.die));
-      if (!classic) await Promise.all(out.map((el, i) => calm
+      await Promise.all(out.map((el, i) => calm
         ? play(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 150 })
         : play(el, [
           { transform: `${shaken ? 'translateY(-2.5rem) scale(1.25)' : `${toButton(el)} scale(.3)`} ${tumble()}`, opacity: 0 },
@@ -551,7 +540,7 @@ async function doRoll(shaken = false) {
     } else {
       render();
       flickDebug.hidden = true;
-      await scene.throw(active, { calm, classic: state.animation === 'classic' });
+      await scene.throw(active, { calm });
       if (scene.failed) return; // an aborted WebGL throw is not a completed history result
     }
     navigator.vibrate?.(25);
@@ -559,7 +548,7 @@ async function doRoll(shaken = false) {
   } finally {
     rolling = false;
     $('#roll').disabled = false;
-    document.body.classList.remove('rolling', 'sum-pending', 'classic');
+    document.body.classList.remove('rolling', 'sum-pending');
     commit();
   }
 }
@@ -810,10 +799,6 @@ function setTheme(theme) {
 }
 onPick($('#theme'), 'theme', setTheme);
 setTheme(document.documentElement.dataset.theme);
-onPick($('#animation'), 'animation', animation => {
-  state.animation = animation;
-  commit();
-});
 // Switching the view keeps the round as it is; only the presentation changes. Not during a roll.
 onPick($('#view'), 'view', view => {
   if (rolling || view === state.view) return;

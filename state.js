@@ -22,7 +22,6 @@ export function loadState(json, surfaces) {
       history: Array.isArray(s.history) ? s.history.filter(h => typeof h === 'string').slice(0, HISTORY_LIMIT) : [],
       sets: Array.isArray(s.sets) ? s.sets.filter(isSet).map(loadSet) : [],
       lastTray: isTray(s.lastTray) ? s.lastTray : undefined,
-      animation: s.animation === 'classic' ? 'classic' : 'cup',
       surface: surfaces.includes(s.surface) ? s.surface : '',
       sound: s.sound !== false,
       clickMode: s.clickMode === 'select' || s.clickMode === 'edit' ? s.clickMode : 'direct',

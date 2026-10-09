@@ -126,6 +126,7 @@ if ('serviceWorker' in navigator) {
       <button data-view="3d">3D</button>
     </div>
     <p class="hint">2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.</p>
+    <p class="hint">Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.</p>
 
     <h3 data-view-only="3d">Table tilt</h3>
     <div class="grid" id="tilt" data-view-only="3d">
@@ -133,15 +134,6 @@ if ('serviceWorker' in navigator) {
       <button data-tilt="off">Off</button>
     </div>
     <p class="hint" data-view-only="3d">Tilt your phone to move table dice. Off keeps the table level.</p>
-
-    <h3>Roll animation</h3>
-    <div class="grid" id="animation">
-      <button data-animation="cup">Cup</button>
-      <button data-animation="classic">Spin</button>
-    </div>
-    <p class="hint" data-view-only="2d">Default: Cup – collect and throw with subtle flight blur. The total appears as the dice fly out. Spin: dice stay on the table.</p>
-    <p class="hint" data-view-only="3d">Cup: throw dice onto the table. Spin: a lower throw. Results appear when the dice settle.</p>
-    <p class="hint">Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.</p>
 
     <h3>Accessibility</h3>
     <p class="hint">Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.</p>

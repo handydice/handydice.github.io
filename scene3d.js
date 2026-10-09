@@ -302,7 +302,7 @@ export class DiceScene {
     this.invalidate();
   }
 
-  throw(dice, { calm, classic } = {}) {
+  throw(dice, { calm } = {}) {
     this.dropped = false;
     const n = dice.length, columns = Math.ceil(Math.sqrt(n * this.rect.width / Math.max(1, this.rect.height)));
     dice.forEach((d, i) => {
@@ -317,10 +317,10 @@ export class DiceScene {
       }
       b.quat = randomQuat(random);
       b.pos[0] = ((i % columns) - (columns - 1) / 2) * 1.25;
-      b.pos[1] = classic ? 1.3 : 2.5 + Math.floor(i / columns) * 1.2 + random() * 0.4;
+      b.pos[1] = 2.5 + Math.floor(i / columns) * 1.2 + random() * 0.4;
       b.pos[2] = (Math.floor(i / columns) - (Math.ceil(n / columns) - 1) / 2) * 1.25;
       b.vel[0] = (random() - 0.5) * 4;
-      b.vel[1] = classic ? 1 : 2 + random() * 3;
+      b.vel[1] = 2 + random() * 3;
       b.vel[2] = (random() - 0.5) * 4;
       b.ang[0] = (random() - 0.5) * 24;
       b.ang[1] = (random() - 0.5) * 24;

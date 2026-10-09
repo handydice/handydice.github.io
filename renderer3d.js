@@ -8,7 +8,8 @@ import { ATLAS_COLS } from './dice3d.js';
 import { MAX_DICE } from './dice.js';
 
 const DPR_MAX = 2;
-const FOV = 32 * Math.PI / 180, TAN = Math.tan(FOV / 2);
+// Narrow FOV: camera() raises the camera to keep the same framing, so edge dice show less of their sides.
+const FOV = 22 * Math.PI / 180, TAN = Math.tan(FOV / 2);
 const PREVIEW_FOV = 28 * Math.PI / 180, PREVIEW_TAN = Math.tan(PREVIEW_FOV / 2), PREVIEW_TILT = 0.3;
 const SHADOW_SIZE = 1024;
 const MAX_OCC = 12;
@@ -23,9 +24,9 @@ const FILL_DIR = norm([0.7, 0.45, 0.6]);
 
 // Same colors as style.css: [die, pip] for the palette; skins add [roughness, metalness].
 const PLAIN = {
-  white: ['#f7f5ef', '#171717'], blue: ['#1652f0', '#fff'], yellow: ['#ffcc00', '#1f2430'], green: ['#00b347', '#fff'],
-  orange: ['#ff7300', '#fff'], purple: ['#7a1fff', '#fff'], red: ['#e3101e', '#fff'], brown: ['#8a5a32', '#fff'],
-  turquoise: ['#00c2b8', '#002826'], pink: ['#ff2d95', '#fff'], gray: ['#343a46', '#fff'],
+  white: ['#edebe5', '#171717'], blue: ['#194ed8', '#fff'], yellow: ['#eec20f', '#1f2430'], green: ['#0aa748', '#fff'],
+  orange: ['#e96f0a', '#fff'], purple: ['#7020e4', '#fff'], red: ['#cb131f', '#fff'], brown: ['#805633', '#fff'],
+  turquoise: ['#0cb5ac', '#002826'], pink: ['#e62f8a', '#fff'], gray: ['#343a46', '#fff'],
 };
 const SKINS = {
   opal: ['#c0cceb', '#141414', 0.18], wood: ['#dd7d36', '#141414', 0.55], galaxy: ['#321474', '#e2ac3c', 0.2],
@@ -39,7 +40,7 @@ const SURFACES = { casino: '#09491f', oak: '#8f8071', crafts: '#e5d8c4', bluewoo
 function material(color) {
   const skin = color?.startsWith('skin-') && SKINS[color.slice(5)];
   if (skin) return { die: skin[0], pip: skin[1], rough: skin[2], metal: skin[3] ?? 0, skin: color.slice(5) };
-  const [die, pip] = PLAIN[color] ?? ['#f7f5ef', '#191919'];
+  const [die, pip] = PLAIN[color] ?? ['#edebe5', '#191919'];
   return { die, pip, rough: 0.3, metal: 0 };
 }
 

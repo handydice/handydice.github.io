@@ -36,7 +36,7 @@ the one we wanted for our own game nights:
   Save your own with one tap.
 - **12 painted skins** (opal, galaxy, jade, amber, steel, ice, …) plus 11 plain colors, per die.
 - **5 table surfaces:** casino felt, oak, crafts, blue wood, terracotta. Light, dark or automatic theme.
-- **Feels like real dice:** a dice cup animation with sound, or spinning dice. In 3D every landing and die-on-die
+- **Feels like real dice:** a dice cup animation with sound. In 3D every landing and die-on-die
   hit sounds when it happens, louder the faster it is. Shake your phone to roll.
 - **2D or 3D:** lightweight 2D by default, or physical 3D dice selected in Settings. Switching keeps your round.
 - **Accessible:** full keyboard control, an optional two-tap mode instead of dragging, respects reduced motion.
