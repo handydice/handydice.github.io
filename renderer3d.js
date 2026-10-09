@@ -691,19 +691,19 @@ export class DiceRenderer {
   // Shadow map of the table dice from the key light; redrawn only when a body moved.
   shadowPass(bodies, bounds) {
     const { gl } = this;
-    let key = bounds.x * 31 + bounds.z * 17 + bodies.length * 1e4;
+    let key = bounds.x * 31 + bounds.z * 17 + (bounds.minZ ?? -bounds.z) * 23 + (bounds.maxZ ?? bounds.z) * 29 + bodies.length * 1e4;
     bodies.forEach((b, i) => {
       if (b.dead) return;
       const p = b.pos, q = b.quat;
       key += (i + 1) * (p[0] * 1.3 + p[1] * 7.1 + p[2] * 3.7 + q[0] * 11 + q[1] * 13 + q[2] * 17 + q[3] * 19);
     });
-    const lightKey = `${bounds.x},${bounds.z}`;
+    const lightKey = `${bounds.x},${bounds.minZ ?? -bounds.z},${bounds.maxZ ?? bounds.z}`;
     if (lightKey !== this.lightKey) {
       // Ortho light frustum around the table box (dice fly up to y ≈ 4).
       this.lightKey = lightKey;
       const view = lookAt(new Float32Array(16), KEY_DIR.map(c => c * 20), [0, 0, 0], [0, 0, -1]);
       const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-      for (const x of [-bounds.x - 1, bounds.x + 1]) for (const y of [0, 4]) for (const z of [-bounds.z - 1, bounds.z + 1]) {
+      for (const x of [-bounds.x - 1, bounds.x + 1]) for (const y of [0, 4]) for (const z of [(bounds.minZ ?? -bounds.z) - 1, (bounds.maxZ ?? bounds.z) + 1]) {
         for (let r = 0; r < 3; r++) {
           const v = view[r] * x + view[4 + r] * y + view[8 + r] * z + view[12 + r];
           lo[r] = Math.min(lo[r], v); hi[r] = Math.max(hi[r], v);

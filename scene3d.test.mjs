@@ -95,4 +95,111 @@ for (const autoPlace of [false, true]) {
   assert.equal(picked.die.value, 2, 'stored die keeps its original result');
   assert.equal(neighbor.die.value, 15, 'bumped neighbor result matches its actual visible face');
 }
+
+// Committing a finished throw must not reposition or straighten an already resting die.
+for (const heightChange of [0, -0.001]) {
+  const die = { sides: 6, value: 1 };
+  const body = makeBody(buildDie(6), [0, 1, 0]);
+  orientValue(body, die.value);
+  body.die = die;
+  const bounds = { x: 2.7, z: 5.4 };
+  body.pos[0] = bounds.x - body.shape.inradius;
+  body.pos[2] = -1.2;
+  body.quat[1] = 0.001;
+  const pose = { pos: [...body.pos], quat: [...body.quat] };
+  const rect = { left: 0, top: 100, width: 300, height: 600 + heightChange };
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    bounds, rect, bodies: new Map([[die, body]]), targets: new Map(),
+    table: { getBoundingClientRect: () => rect },
+    topTray: { classList: { contains: () => true } },
+    bottomTray: { classList: { contains: () => true } },
+    renderer: { setSurface() {} }, refreshEntries() {}, placeTargets() {}, invalidate() {},
+  });
+  scene.sync([die], new Map());
+  assert.deepEqual(body.quat, pose.quat, 'final commit must not straighten the die');
+  assert.equal(body.pos[1], pose.pos[1], 'final commit must not lower the die');
+  assert(Math.hypot(body.pos[0] - pose.pos[0], body.pos[2] - pose.pos[2]) < 0.001,
+    'a wall contact or subpixel layout change must not move the die visibly');
+}
+
+// Gentle drops keep the visible result throughout the fall, for every supported shape.
+for (const sides of [4, 6, 8, 10, 12, 20, 100]) {
+  const die = { sides, value: 1 }, body = makeBody(buildDie(sides), [0, 1, 0]);
+  body.die = die;
+  body.faceValues = Uint8Array.from({ length: sides }, (_, i) => sides - i);
+  orientValue(body, sides);
+  body.pos[1] = 1.6; body.vel[0] = 1.9;
+  body.held = { target: [...body.pos], ang: [0, 0, 0] };
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    grip: { body }, refreshEntries() {}, invalidate() {},
+  });
+  scene.endGrip(die);
+  for (let i = 0; i < 600; i++) {
+    step([body], 1 / 120, { x: 4, z: 4 });
+    assert.equal(body.faceValues[readValue(body.shape, mat3(body.quat)) - 1], 1, `D${sides}: gentle move preserves face`);
+    if (body.sleeping) break;
+  }
+  assert(body.sleeping, `D${sides}: gentle drop comes to rest`);
+}
+
+// Fast translation or yaw leaves labels readable; fast tumbling randomizes once.
+{
+  const die = { sides: 6, value: 1 }, body = makeBody(buildDie(6), [0, 1, 0]);
+  body.die = die; body.faceValues = Uint8Array.from([6, 5, 4, 3, 2, 1]);
+  orientValue(body, 6); body.pos[1] = 3; body.vel[0] = 8;
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    grip: { body }, bodies: new Map([[die, body]]), active: [body], tableBodies: [body],
+    bounds: { x: 10, z: 10 }, lastTime: 0, accumulator: 0,
+    refreshEntries() {}, invalidate() {}, draw() {},
+  });
+  const originalRandom = crypto.getRandomValues;
+  let draws = 0;
+  crypto.getRandomValues = array => { draws++; return array.fill(0); };
+  try {
+    scene.endGrip(die);
+    assert.equal(draws, 0, 'fast straight release does not alter readable labels');
+    body.ang[1] = 30;
+    scene.tick(16);
+    assert.equal(draws, 0, 'fast yaw keeps the readable upper face');
+    body.ang[1] = 0; body.ang[0] = 15.9;
+    scene.tick(32);
+    assert.equal(draws, 0, 'slow tumbling keeps numbering');
+    assert.equal(body.faceValues[readValue(body.shape, mat3(body.quat)) - 1], 1);
+    body.ang[0] = 16;
+    scene.tick(48);
+    assert(draws > 0, 'fast tumbling uses the cryptographic generator');
+    assert.notEqual(body.faceValues[readValue(body.shape, mat3(body.quat)) - 1], 1);
+    const count = draws;
+    body.ang[0] = 30;
+    scene.tick(64);
+    assert.equal(draws, count, 'only one randomization per throw');
+  } finally { crypto.getRandomValues = originalRandom; }
+}
+
+// Tilt wakes only free dice, rotates with screen orientation and never rerolls their numbering.
+{
+  const free = makeBody(buildDie(6), [0, 1, 0]), locked = makeBody(buildDie(6), [1, 1, 0]);
+  free.die = { sides: 6, value: 1 }; locked.die = { sides: 6, value: 2, tray: 'b1' };
+  orientValue(free, 1); orientValue(locked, 2);
+  free.randomizeOnSpin = true;
+  const lockedPose = { pos: [...locked.pos], quat: [...locked.quat] };
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    gravity: [0, -1, 0], bodies: new Map([[free.die, free], [locked.die, locked]]), invalidate() {},
+  });
+  scene.setTilt(30, 0);
+  assert.equal(free.sleeping, false);
+  assert.equal(free.randomizeOnSpin, false);
+  assert.equal(locked.sleeping, true);
+  assert.deepEqual({ pos: locked.pos, quat: locked.quat }, lockedPose);
+  assert(Math.abs(scene.gravity[2] - 0.5) < 1e-9);
+  scene.setTilt(30, 0, 90);
+  assert(Math.abs(scene.gravity[0] - 0.5) < 1e-9);
+  assert(Math.abs(scene.gravity[2]) < 1e-9);
+  scene.setTilt(90, 0);
+  assert(Math.abs(scene.gravity[1] + Math.cos(75 * Math.PI / 180)) < 1e-9);
+  const gravity = [...scene.gravity];
+  scene.setTilt(null, 0);
+  assert.deepEqual(scene.gravity, gravity, 'missing sensor readings cannot corrupt physics');
+}
+
 console.log('scene3d tray values ok');

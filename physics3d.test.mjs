@@ -142,4 +142,34 @@ for (const sides of SIDES) {
   assert.ok(Math.abs(b.pos[1] - shape.inradius) < 0.005 && Math.hypot(b.pos[0], b.pos[2]) < 0.01);
 }
 
+// Empty tray space is a real extension, with independent walls beyond the original table.
+for (const direction of [-1, 1]) {
+  const bounds = { x: 3, z: 4, minZ: direction < 0 ? -6 : -4, maxZ: direction > 0 ? 6 : 4 };
+  const body = orientValue(makeBody(buildDie(6), [0, 1, direction * 5]), 1);
+  body.sleeping = false;
+  body.vel[2] = direction * 4;
+  settle([body], () => {
+    const m = mat3(body.quat), v = body.shape.vertices;
+    for (let i = 0; i < v.length; i += 3) {
+      const z = body.pos[2] + m[2] * v[i] + m[5] * v[i + 1] + m[8] * v[i + 2];
+      assert(z - body.shape.margin >= bounds.minZ - 0.02);
+      assert(z + body.shape.margin <= bounds.maxZ + 0.02);
+    }
+  }, bounds);
+  assert(direction * body.pos[2] > 4.4, 'die remains in the empty tray extension');
+}
+
+// The same slope leaves a cube stable but rolls the smaller-faced D100; steeper slopes slide a cube.
+const slopeBodies = [];
+for (const [sides, degrees] of [[6, 15], [100, 15], [6, 35]]) {
+  const body = orientValue(makeBody(buildDie(sides), [0, 1, 0]), 1);
+  const angle = degrees * Math.PI / 180, gravity = [Math.sin(angle), -Math.cos(angle), 0];
+  body.sleeping = false;
+  for (let i = 0; i < 240; i++) step([body], DT, { x: 100, z: 100 }, gravity);
+  slopeBodies.push(body);
+}
+assert(Math.abs(slopeBodies[0].pos[0]) < 0.01, 'cube sticks below its friction/tipping limit');
+assert(slopeBodies[1].pos[0] > 0.1, 'D100 rolls on a slope that leaves the cube stable');
+assert(slopeBodies[2].pos[0] > 0.2, 'cube slides when gravity exceeds friction');
+
 console.log('physics3d ok');

@@ -837,20 +837,19 @@ $('#install').onclick = async () => {
 };
 addEventListener('appinstalled', () => { $('#install').hidden = true; });
 
-// Shake to roll: while the phone is shaken the dice rattle on the table; when shaking stops, they are thrown.
+// 2D shake to roll. In 3D the orientation sensor only tilts the physical table.
 // Calibration (m/s², including gravity ≈ 9.8): START = jolt to begin, KEEP = still shaking, STILL_MS = rest before the throw.
 const SHAKE_START = 22, SHAKE_KEEP = 15, SHAKE_STILL_MS = 350;
 let lastMag = 0, shakeTimer = null;
 addEventListener('devicemotion', e => {
   const a = e.accelerationIncludingGravity;
-  if (!a || rolling || cancelDrag || selected || dialogOpen() || !state.dice.length) return;
+  if (state.view !== '2d' || !a || rolling || cancelDrag || selected || dialogOpen() || !state.dice.length) return;
   const m = Math.hypot(a.x ?? 0, a.y ?? 0, a.z ?? 0);
   const jolt = m > SHAKE_START && m - lastMag > 15;
   lastMag = m;
   if (!jolt && !(shakeTimer && m > SHAKE_KEEP)) return;
   if (!shakeTimer) {
-    if (state.view === '2d') for (const el of elsOf(rollable(state.dice))) el.classList.add('rattle');
-    else if (!reducedMotion()) scene?.rattle(rollable(state.dice));
+    for (const el of elsOf(rollable(state.dice))) el.classList.add('rattle');
     // The rattle starts with the shaking, not with the throw; with reduced motion nothing wobbles.
     if (!reducedMotion()) sound('shuffle');
     navigator.vibrate?.([15, 50, 15, 50, 15]);
@@ -862,8 +861,15 @@ addEventListener('devicemotion', e => {
     doRoll(true);
   }, SHAKE_STILL_MS);
 }, { passive: true });
-// iOS asks for motion permission only after a user gesture.
-addEventListener('click', () => window.DeviceMotionEvent?.requestPermission?.().catch(() => {}), { once: true });
+addEventListener('deviceorientation', e => {
+  if (state.view !== '3d' || rolling || dialogOpen()) return;
+  scene?.setTilt(e.beta, e.gamma, screen.orientation?.angle ?? window.orientation ?? 0);
+}, { passive: true });
+// iOS asks for both motion and orientation permission only after a user gesture.
+addEventListener('click', () => {
+  window.DeviceMotionEvent?.requestPermission?.().catch(() => {});
+  window.DeviceOrientationEvent?.requestPermission?.().catch(() => {});
+}, { once: true });
 
 // Startup
 

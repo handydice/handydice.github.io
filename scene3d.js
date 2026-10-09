@@ -20,11 +20,20 @@ const displayedValue = body => {
 };
 const restoreValue = (body, value) => orientValue(body, body.faceValues ? body.faceValues.indexOf(value) + 1 : value);
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+// Tune on real phones: gentle translation in world units/s; fast tumbling in radians/s.
+const MOVE_SPEED = 2, RANDOMIZE_SPIN = 16;
+const TILT_DEADBAND = 0.01, MIN_TILT_NORMAL = Math.cos(75 * Math.PI / 180);
+const renumber = body => {
+  body.faceValues = randomFaceValues(body.shape.sides);
+  body.faceValuesKey = body.faceValues.join(',');
+};
 
 // One WebGL context for the table and both trays. Simulation/rendering stop completely at rest.
 export class DiceScene {
   constructor(canvas, table) {
     this.table = table;
+    this.topTray = table.parentElement.querySelector('[data-tray="t1"]');
+    this.bottomTray = table.parentElement.querySelector('[data-tray="b1"]');
     this.renderer = new DiceRenderer(canvas);
     this.renderer.onChange = () => this.invalidate();
     this.bodies = new Map();
@@ -33,6 +42,7 @@ export class DiceScene {
     this.tableBodies = [];
     this.previews = [];
     this.bounds = { x: 3, z: 4 };
+    this.gravity = [0, -1, 0];
     this.raf = 0;
     this.lastTime = 0;
     this.accumulator = 0;
@@ -98,11 +108,13 @@ export class DiceScene {
   }
 
   placeOnTable(body) {
-    const xMax = this.bounds.x - body.shape.radius - 0.1, zMax = this.bounds.z - body.shape.radius - 0.1;
+    const xMax = this.bounds.x - body.shape.radius - 0.1;
+    const zMin = (this.bounds.minZ ?? -this.bounds.z) + body.shape.radius + 0.1;
+    const zMax = (this.bounds.maxZ ?? this.bounds.z) - body.shape.radius - 0.1;
     let best = -Infinity, nearest = Infinity;
     // ponytail: 25 candidates, at most 12 dice; use packing if the dice limit grows.
     for (let iz = -2; iz <= 2; iz++) for (let ix = -2; ix <= 2; ix++) {
-      const x = ix * xMax / 2, z = iz * zMax / 2;
+      const x = ix * xMax / 2, z = (zMin + zMax) / 2 + iz * (zMax - zMin) / 4;
       let clearance = Infinity;
       for (const other of this.bodies.values()) {
         if (other === body || other.tray || other.die.tray) continue;
@@ -117,24 +129,37 @@ export class DiceScene {
   }
 
   layout() {
-    const old = this.bounds;
+    const old = this.bounds, oldRect = this.rect;
     this.rect = this.table.getBoundingClientRect();
     const ratio = Math.max(0.4, Math.min(3, this.rect.width / Math.max(1, this.rect.height)));
     this.bounds = { x: 2.7 * Math.max(1, ratio), z: 2.7 * Math.max(1, 1 / ratio) };
+    this.playTop = this.topTray.classList.contains('occupied') ? this.rect.top : this.topTray.getBoundingClientRect().top;
+    this.playBottom = this.bottomTray.classList.contains('occupied') ? this.rect.top + this.rect.height : this.bottomTray.getBoundingClientRect().bottom;
+    this.bounds.minZ = this.playTop === this.rect.top ? -this.bounds.z
+      : this.renderer.unproject(this.rect.left, this.playTop, this.rect, this.bounds, 0)[2];
+    this.bounds.maxZ = this.playBottom === this.rect.top + this.rect.height ? this.bounds.z
+      : this.renderer.unproject(this.rect.left, this.playBottom, this.rect, this.bounds, 0)[2];
+    const resize = oldRect.width !== this.rect.width || oldRect.height !== this.rect.height;
+    const shrinkX = this.bounds.x < old.x;
+    const shrinkZ = this.bounds.minZ > (old.minZ ?? -old.z) || this.bounds.maxZ < (old.maxZ ?? old.z);
     for (const body of this.bodies.values()) {
-      body.pos[0] = clamp(body.pos[0] * this.bounds.x / old.x, -this.bounds.x + body.shape.radius, this.bounds.x - body.shape.radius);
-      body.pos[2] = clamp(body.pos[2] * this.bounds.z / old.z, -this.bounds.z + body.shape.radius, this.bounds.z - body.shape.radius);
-    }
-    // Reframe resting dice without changing the round when the viewport changes.
-    if ((old.x !== this.bounds.x || old.z !== this.bounds.z) && !this.throwing && !this.grip) {
-      const table = [...this.bodies.values()].filter(body => !body.die.tray);
-      const columns = Math.max(1, Math.ceil(Math.sqrt(table.length * ratio)));
-      table.forEach((body, i) => {
-        if (!body.sleeping) return;
-        body.pos[0] = ((i % columns) - (columns - 1) / 2) * 1.4;
-        body.pos[2] = (Math.floor(i / columns) - (Math.ceil(table.length / columns) - 1) / 2) * 1.4;
-        restoreValue(body, body.die.value);
-      });
+      if (body.die.tray) continue;
+      if (resize) {
+        body.pos[0] *= this.bounds.x / old.x;
+        body.pos[2] *= this.bounds.z / old.z;
+      }
+      if (!shrinkX && !shrinkZ) continue;
+      // Only a shrinking wall can move a die. Use its actual rotated shape, not its bounding sphere.
+      const m = mat3(body.quat, body.m), v = body.shape.vertices, margin = body.shape.margin;
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      for (let i = 0; i < v.length; i += 3) {
+        const x = m[0] * v[i] + m[3] * v[i + 1] + m[6] * v[i + 2];
+        const z = m[2] * v[i] + m[5] * v[i + 1] + m[8] * v[i + 2];
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+        minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+      }
+      if (shrinkX) body.pos[0] = clamp(body.pos[0], -this.bounds.x - minX + margin, this.bounds.x - maxX - margin);
+      if (shrinkZ) body.pos[2] = clamp(body.pos[2], this.bounds.minZ - minZ + margin, this.bounds.maxZ - maxZ - margin);
     }
     this.refreshEntries();
     this.placeTargets();
@@ -163,7 +188,7 @@ export class DiceScene {
     if (this.grip) {
       const { body, x, y } = this.grip;
       this.active.push(body);
-      if (x >= this.rect.left && x <= this.rect.right && y >= this.rect.top && y <= this.rect.bottom) this.tableBodies.push(body);
+      if (x >= this.rect.left && x <= this.rect.right && y >= this.playTop && y <= this.playBottom) this.tableBodies.push(body);
       else this.previews.push({ body, rect: { left: x - 42, top: y - 42, width: 84, height: 84, right: x + 42, bottom: y + 42 } });
     }
   }
@@ -181,10 +206,17 @@ export class DiceScene {
     if (moving) {
       this.accumulator += dt;
       while (this.accumulator >= 1 / 120) {
-        step(this.active, 1 / 120, this.bounds);
+        step(this.active, 1 / 120, this.bounds, this.gravity);
         this.accumulator -= 1 / 120;
       }
       moving = this.active.some(body => !body.sleeping || body.held);
+    }
+    for (const body of this.active) {
+      if (!body.randomizeOnSpin) continue;
+      if (Math.hypot(body.ang[0], body.ang[2]) >= RANDOMIZE_SPIN) {
+        renumber(body);
+        body.randomizeOnSpin = false; // once per throw; yaw alone leaves the upper face readable
+      } else if (body.sleeping) body.randomizeOnSpin = false;
     }
     this.draw();
     if (!moving && this.throwing) {
@@ -227,14 +259,30 @@ export class DiceScene {
   }
   pick(x, y) { return this.renderer.raycast(x, y, this.tableBodies, this.rect, this.bounds); }
 
-  rattle(dice) {
-    for (const d of dice) {
-      if (d.tray) continue;
-      const body = this.bodies.get(d);
-      body.vel[1] = 1.5;
-      body.ang[0] = (random() - 0.5) * 6;
-      body.ang[2] = (random() - 0.5) * 6;
-      body.sleeping = false; body.sleepTimer = 0;
+  setTilt(beta, gamma, screenAngle = 0) {
+    if (!Number.isFinite(beta) || !Number.isFinite(gamma) || !Number.isFinite(screenAngle) || this.throwing) return;
+    const b = beta * Math.PI / 180, g = gamma * Math.PI / 180, a = screenAngle * Math.PI / 180;
+    let x = Math.sin(g) * Math.cos(b), z = Math.sin(b);
+    // ponytail: cap tilt at 75°; off-table falls would need a catch/return model.
+    let normal = Math.cos(b) * Math.cos(g);
+    const horizontal = Math.hypot(x, z);
+    if (normal < MIN_TILT_NORMAL) {
+      if (horizontal < 1e-9) { x = z = 0; normal = 1; }
+      else {
+        const scale = Math.sqrt(1 - MIN_TILT_NORMAL ** 2) / horizontal;
+        x *= scale; z *= scale; normal = MIN_TILT_NORMAL;
+      }
+    }
+    const length = Math.hypot(x, normal, z);
+    x /= length; z /= length;
+    const gx = x * Math.cos(a) + z * Math.sin(a), gy = -normal / length;
+    const gz = z * Math.cos(a) - x * Math.sin(a);
+    if (Math.hypot(gx - this.gravity[0], gy - this.gravity[1], gz - this.gravity[2]) < TILT_DEADBAND) return;
+    this.gravity[0] = gx; this.gravity[1] = gy; this.gravity[2] = gz;
+    for (const body of this.bodies.values()) {
+      if (body.die.tray || body.held) continue;
+      body.sleeping = false; body.sleepTimer = 0; body.guided = false;
+      body.randomizeOnSpin = false; // sensor play must never trigger cryptographic rerolls
     }
     this.dropped = true;
     this.invalidate();
@@ -246,8 +294,8 @@ export class DiceScene {
     dice.forEach((d, i) => {
       const b = this.bodies.get(d);
       // Independent numbering makes every physical face uniformly random, including unequal d100 faces.
-      b.faceValues = randomFaceValues(d.sides);
-      b.faceValuesKey = b.faceValues.join(',');
+      renumber(b);
+      b.guided = false; b.randomizeOnSpin = false;
       if (calm) {
         d.value = roll(d.sides);
         restoreValue(b, d.value);
@@ -277,9 +325,9 @@ export class DiceScene {
     this.grip = {
       body, x, y, originalPos: [...body.pos], originalQuat: [...body.quat],
       originalVel: [...body.vel], originalAng: [...body.ang], originalSleeping: body.sleeping,
-      originalTray: body.tray,
+      originalTray: body.tray, originalGuided: body.guided, originalRandomize: body.randomizeOnSpin,
     };
-    body.sleeping = false; body.sleepTimer = 0;
+    body.sleeping = false; body.sleepTimer = 0; body.guided = false; body.randomizeOnSpin = false;
     body.held = { target: [...body.pos], ang: [0, 0, 0] };
     this.dropped = true; // commit every displaced die after pickup, including neighboring dice
     this.moveGrip(x, y, 0, 0);
@@ -293,22 +341,26 @@ export class DiceScene {
     if (!rotate) {
       const target = this.renderer.unproject(x, y, this.rect, this.bounds, 1.6);
       target[0] = clamp(target[0], -this.bounds.x + body.shape.radius, this.bounds.x - body.shape.radius);
-      target[2] = clamp(target[2], -this.bounds.z + body.shape.radius, this.bounds.z - body.shape.radius);
+      target[2] = clamp(target[2], (this.bounds.minZ ?? -this.bounds.z) + body.shape.radius, (this.bounds.maxZ ?? this.bounds.z) - body.shape.radius);
       body.held.target = target;
     }
-    body.held.ang[0] = clamp(dy * 0.3, -12, 12);
-    body.held.ang[1] = clamp(dx * 0.3, -12, 12);
+    if (rotate) {
+      if (dx || dy) this.grip.rotated = true;
+      body.held.ang[0] = clamp(dy * 0.3, -24, 24);
+      body.held.ang[1] = clamp(dx * 0.3, -24, 24);
+    } else body.held.ang.fill(0);
     this.refreshEntries(); this.invalidate();
   }
 
   endGrip(d, cancelled = false, autoPlace = false) {
     if (!this.grip) return;
-    const { body, originalPos, originalQuat, originalVel, originalAng, originalSleeping } = this.grip;
+    const { body, originalPos, originalQuat, originalVel, originalAng, originalSleeping, originalGuided, originalRandomize } = this.grip;
     body.held = null;
     body.tray = d.tray;
     if (cancelled) {
       body.pos = originalPos; body.quat = originalQuat;
       body.vel = originalVel; body.ang = originalAng; body.sleeping = originalSleeping;
+      body.guided = originalGuided; body.randomizeOnSpin = originalRandomize;
     } else if (autoPlace && this.grip.originalTray && !d.tray) {
       this.placeOnTable(body);
       restoreValue(body, d.value);
@@ -318,8 +370,16 @@ export class DiceScene {
       restoreValue(body, d.value);
       body.vel.fill(0); body.ang.fill(0); body.sleeping = true;
     } else {
-      body.vel[0] = clamp(body.vel[0], -8, 8);
-      body.vel[2] = clamp(body.vel[2], -8, 8);
+      const speed = Math.hypot(body.vel[0], body.vel[2]);
+      body.guided = speed < MOVE_SPEED && !this.grip.rotated;
+      body.randomizeOnSpin = !body.guided;
+      if (body.guided) {
+        // Lower naturally, without changing the face or adding sideways momentum.
+        body.vel[0] = body.vel[2] = 0; body.ang.fill(0);
+      } else {
+        body.vel[0] = clamp(body.vel[0], -8, 8);
+        body.vel[2] = clamp(body.vel[2], -8, 8);
+      }
       body.sleeping = false; body.sleepTimer = 0;
       this.dropped = true;
     }

@@ -4,6 +4,7 @@
 // and restitution, and sleeping. Deterministic and allocation-free per step: randomness lives only in the
 // initial conditions.
 const GRAVITY = 32;            // world units/s²; a d6 is 0.9 wide
+const DOWN = [0, -1, 0];
 const SUBSTEP = 1 / 240;
 const ITERATIONS = 10;
 const SPECULATIVE = 0.03;      // contacts start this far before touching, so fast dice cannot pass through
@@ -34,7 +35,7 @@ export function makeBody(shape, pos, quat = [0, 0, 0, 1]) {
   const l = Math.hypot(...quat), k = (shape.inradius + shape.radius) / 2;
   const body = {
     shape, pos: [...pos], quat: quat.map(c => c / l), vel: [0, 0, 0], ang: [0, 0, 0],
-    sleeping: false, sleepTimer: 0, held: null, dead: false,
+    sleeping: false, sleepTimer: 0, held: null, guided: false, randomizeOnSpin: false, dead: false,
     // Equal masses; inertia of a ball between in- and circumradius (exact enough for these round solids).
     invMass: 1, invInertia: 1 / (0.4 * k * k), im: 1, ii: 0, touch: false,
     rest: null, stamp: 0, // dice it slept against
@@ -74,16 +75,16 @@ export function orientValue(body, value) {
   for (let i = 0; i < 4; i++) q[i] /= l;
   body.pos[1] = shape.inradius;
   body.vel.fill(0); body.ang.fill(0);
-  body.sleeping = true; body.sleepTimer = 0; body.rest = null;
+  body.sleeping = true; body.sleepTimer = 0; body.rest = null; body.guided = false; body.randomizeOnSpin = false;
   place(body);
   return body;
 }
 
-// Advance by dt seconds (fixed substeps). bounds: half extents of the table in x and z, the table top is
-// y = 0 and walls are infinitely high. Held bodies chase held.target with spin held.ang and keep that
+// Advance by dt seconds (fixed substeps). bounds: half extents x/z, optional asymmetric minZ/maxZ.
+// The table top is y = 0 and walls are infinitely high. Held bodies chase held.target with spin held.ang and keep that
 // velocity when released. Returns whether anything still moves.
 let stamp = 0;
-export function step(bodies, dt, bounds) {
+export function step(bodies, dt, bounds, gravity = DOWN) {
   // A sleeping die wakes when a die it rested against is gone (dead or no longer simulated).
   stamp++;
   for (const b of bodies) b.stamp = stamp;
@@ -93,7 +94,7 @@ export function step(bodies, dt, bounds) {
   }
   if (dt > 0) {
     const n = Math.ceil(Math.min(dt, 0.05) / SUBSTEP - 1e-9), h = Math.min(dt, 0.05) / n;
-    for (let i = 0; i < n; i++) substep(bodies, h, bounds);
+    for (let i = 0; i < n; i++) substep(bodies, h, bounds, gravity);
   }
   let active = false;
   for (const b of bodies) {
@@ -109,7 +110,8 @@ function rouse(b) {
   b.im = b.invMass; b.ii = b.invInertia;
 }
 
-function substep(bodies, dt, bounds) {
+function substep(bodies, dt, bounds, gravity) {
+  const gx = GRAVITY * gravity[0] * dt, gy = GRAVITY * gravity[1] * dt, gz = GRAVITY * gravity[2] * dt;
   for (const b of bodies) {
     if (b.dead) continue;
     if (b.held) {
@@ -121,9 +123,9 @@ function substep(bodies, dt, bounds) {
       b.vel[0] = x; b.vel[1] = y; b.vel[2] = z;
       if (b.held.ang) { b.ang[0] = b.held.ang[0]; b.ang[1] = b.held.ang[1]; b.ang[2] = b.held.ang[2]; }
       else { const k = Math.max(0, 1 - 8 * dt); b.ang[0] *= k; b.ang[1] *= k; b.ang[2] *= k; }
-    } else if (!b.sleeping) b.vel[1] -= GRAVITY * dt;
+    } else if (!b.sleeping) { b.vel[0] += gx; b.vel[1] += gy; b.vel[2] += gz; }
     b.im = b.sleeping ? 0 : b.invMass;
-    b.ii = b.sleeping ? 0 : b.invInertia;
+    b.ii = b.sleeping || b.held || b.guided ? 0 : b.invInertia;
     b.touch = false;
     place(b);
   }
@@ -140,7 +142,7 @@ function substep(bodies, dt, bounds) {
       if (dx * dx + dy * dy + dz * dz < r * r) collide(A, B, dt);
     }
   }
-  for (const b of bodies) if (!b.dead && !b.sleeping) planes(b, bounds.x, bounds.z, dt);
+  for (const b of bodies) if (!b.dead && !b.sleeping) planes(b, bounds.x, bounds.minZ ?? -bounds.z, bounds.maxZ ?? bounds.z, dt);
 
   for (let it = 0; it < ITERATIONS; it++) for (let i = 0; i < nc; i++) solve(contacts[i]);
 
@@ -162,6 +164,7 @@ function substep(bodies, dt, bounds) {
   for (const b of bodies) {
     if (b.dead || b.sleeping || b.held) continue;
     const v = b.vel, w = b.ang;
+    if (b.guided && b.touch && Math.abs(v[1]) < SLEEP_SPEED) b.guided = false;
     if (v[0] * v[0] + v[1] * v[1] + v[2] * v[2] < SLEEP_SPEED ** 2 && w[0] * w[0] + w[1] * w[1] + w[2] * w[2] < SLEEP_SPIN ** 2) {
       b.sleepTimer += dt;
       if (b.sleepTimer >= SLEEP_TIME) { b.sleeping = true; v.fill(0); w.fill(0); b.rest = supports(b); }
@@ -275,7 +278,7 @@ function solve(c) {
 }
 
 // Core vertices near the table or a wall: every vertex of a resting face is a contact, so dice lie flat.
-function planes(b, bx, bz, dt) {
+function planes(b, bx, minZ, maxZ, dt) {
   const w = b.world, r = b.shape.margin;
   let d0 = 0, d1 = 0, d2 = 0, d3 = 0, d4 = 0;
   for (let i = 0; i < w.length; i += 3) {
@@ -286,9 +289,9 @@ function planes(b, bx, bz, dt) {
     if (s < SPECULATIVE) { addContact(null, b, x + r, y, z, -1, 0, 0, s, WALL, dt); d1 = Math.max(d1, -s); }
     s = bx + x - r;
     if (s < SPECULATIVE) { addContact(null, b, x - r, y, z, 1, 0, 0, s, WALL, dt); d2 = Math.max(d2, -s); }
-    s = bz - z - r;
+    s = maxZ - z - r;
     if (s < SPECULATIVE) { addContact(null, b, x, y, z + r, 0, 0, -1, s, WALL, dt); d3 = Math.max(d3, -s); }
-    s = bz + z - r;
+    s = z - minZ - r;
     if (s < SPECULATIVE) { addContact(null, b, x, y, z - r, 0, 0, 1, s, WALL, dt); d4 = Math.max(d4, -s); }
   }
   addGroup(null, b, 0, 1, 0, d0);

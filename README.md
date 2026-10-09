@@ -21,8 +21,8 @@ the one we wanted for our own game nights:
 - **Free, for real.** No ads, no in-app purchases, no premium tier. MIT licensed.
 - **Private.** No accounts, no analytics, no trackers, no cookies. Your dice and settings stay on your device.
 - **Offline.** Once loaded, it works without a connection, at the cabin or on the train.
-- **Fair rolls.** The Roll button and shake-to-roll use the browser's cryptographic random generator,
-  with rejection sampling and uniformly randomized 3D face numbering.
+- **Fair rolls.** The Roll button uses the browser's cryptographic random generator, with rejection
+  sampling and uniformly randomized 3D face numbering. Shake-to-roll is available in 2D.
 - **Nothing to install.** It's a web app: one link for iPhone, Android and desktop. Installing to the home screen
   is optional and takes two taps.
 - **No dependencies.** Plain JavaScript and CSS, no framework and no build step.
@@ -54,12 +54,21 @@ Settings → **Dice display** switches between the original 2D view and physical
 initializes WebGL; switching back to it stops the simulation and releases the 3D graphics resources.
 3D requires WebGL2. Both views share dice, trays, colors, sets, history and other settings.
 
-In 3D, drag to pick up and release to drop. Shift-drag, a second finger, or Shift + arrow keys rotate
-a picked-up die. Touch drops keep the current numbering: their result is physical, not guaranteed
-uniform. Moving a die into a tray preserves its stored value; taps and keyboard returns choose
+In 3D, drag gently to move a die without changing its visible value. Shift-drag, a second finger,
+or Shift + arrow keys rotate a picked-up die. Light throws retain the existing numbering and
+land according to physics. A free thrown die receives fresh cryptographic numbering once its
+tumbling speed reaches 16 radians/s (about 2.5 revolutions/s); fast translation or yaw alone
+does not trigger this. `MOVE_SPEED` and `RANDOMIZE_SPIN` in `scene3d.js` are calibration values.
+Moving a die into a tray always preserves its stored value. Taps and keyboard returns choose
 free table positions, while a pointer drop respects the chosen position.
 
-The Roll button and shaking assign fresh cryptographic numbering **before** each 3D throw.
+Tilt your phone to tilt the 3D table: gravity, the die's geometry and contact friction determine
+whether it rolls or slides. Tray dice stay locked; tilting never renumbers dice or triggers
+shake-to-roll. 2D keeps shake-to-roll. The simulated slope is capped at 75° to prevent off-table
+falls. Empty upper and lower trays independently extend the playable area; occupied trays
+restore their own boundary. Finishing a throw preserves the resting position and orientation.
+
+The Roll button assigns fresh cryptographic numbering **before** each 3D throw.
 Opposite-number pairs are shuffled and independently flipped, making every physical face uniform
 over all numbers even if the geometry or simulation favors some faces. Opposite sums remain correct;
 D4 corner labels follow the mapping too. Nothing changes the result after landing. 2D draws values
@@ -109,7 +118,9 @@ the Roll button must not. Pointer clicks must not add another result after an im
 Dice rules, geometry, physics, tray transitions, saved state, 2D layout and language choice are tested
 with `node:assert`. Tests also check all translations and service-worker precaching. Browser smoke:
 switch 2D → 3D → 2D without changing the round; rotate a picked-up die and store it without changing
-its value; return several tray dice without overlap; reload and switch views offline.
+its value; return several tray dice without overlap; reload and switch views offline. Also check
+both empty-tray extensions, gentle movement, light and fast-tumbling throws, and tilt with a
+locked tray die. Real-device sensor permission and threshold calibration need a phone.
 
 New language: add its code to `LANGUAGES`, a table to `translations` in `i18n.js`, a
 `manifest.<code>.webmanifest`, and a button in `#language` (`index.html`).
