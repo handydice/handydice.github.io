@@ -2,8 +2,7 @@ import { MAX_DICE, assignSlots, compactSlots, putAside, roll, rollable, setSides
 import { LANGUAGE_KEY, diceName, dieType, languagePreference, localize, t } from './i18n.js';
 import { fitDice } from './layout.js';
 import { HISTORY_LIMIT, STATE_KEY, THEME_KEY, loadState, saveState } from './state.js';
-import { loadSounds, playSound, resumeSounds } from './sound.js';
-import { loadContacts, resumeContacts, impact } from './sound-prototype.js';
+import { loadSounds, playImpact, playSound, resumeSounds } from './sound.js';
 import { watchViewport } from './viewport.js';
 
 localize(document);
@@ -78,7 +77,7 @@ async function startScene() {
   try { scene = new DiceScene(canvas, tableEl); }
   catch (error) { showRenderError(error); return; }
   scene.onError = showRenderError;
-  scene.onImpact = (type, speed, a, b) => { if (state.sound) impact(type, speed, a, b); };
+  scene.onImpact = (type, speed) => { if (state.sound) playImpact(type, speed); };
   let lastFlickDie = null;
   if (new URLSearchParams(location.search).has('debug')) scene.onFlickRandomize = (die, triggered) => {
     if (!triggered) lastFlickDie = die;
@@ -505,8 +504,8 @@ async function doRoll(shaken = false) {
   const classic = state.animation === 'classic' && !calm;
   if (flat) document.body.classList.toggle('classic', classic);
   const cup = !calm && !shaken && !classic;
-  // Cup sound only with the cup animation; when shaken, the rattle already played.
-  // 3D prototype: cup muted for the listening test, physics contacts cover the roll.
+  // 2D cup: the recorded cup rattle and landing. 3D: physics plays every landing; no recording needed.
+  // When shaken, the rattle already played.
   if (cup) { if (flat) sound('throw'); }
   else if (!shaken) sound('shuffle'); // spin and reduced motion rattle on the roll
   try {
@@ -832,7 +831,6 @@ onPick($('#sound'), 'sound', value => {
   state.sound = value === 'on';
   if (state.sound) {
     loadSounds();
-    loadContacts();
     resumeSounds();
   }
   commit();
@@ -915,7 +913,7 @@ addEventListener('click', () => {
 
 // Startup
 
-if (state.sound) { loadSounds(); loadContacts(); }
+if (state.sound) loadSounds();
 watchViewport(sizeChanged => {
   if (sizeChanged) {
     interrupt();

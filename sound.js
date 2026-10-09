@@ -2,9 +2,10 @@
 // so a sound plays the moment it is triggered; a sound that failed to load stays silent.
 let context;
 const buffers = {};
-// click is the die-on-die contact sample, at half volume as a UI sound.
-const files = { throw: 'throw.mp3', shuffle: 'shuffle.mp3', cup: 'cup.mp3', click: 'contact-die.wav' };
+// click (UI) is the die-on-die contact sample at half volume.
+const files = { throw: 'throw.mp3', shuffle: 'shuffle.mp3', click: 'contact-die.wav', table: 'contact-table.wav', die: 'contact-die.wav' };
 const volume = { click: 0.5 };
+let voices = 0, windowStart = 0;
 
 export function loadSounds() {
   if (context) return;
@@ -16,13 +17,27 @@ export function loadSounds() {
 // iOS only releases audio after a user gesture.
 export const resumeSounds = () => context?.resume();
 
-export function playSound(name) {
+function play(name, gain, rate = 1) {
   if (!buffers[name]) return;
   context.resume();
-  const source = context.createBufferSource();
+  const source = context.createBufferSource(), node = context.createGain();
   source.buffer = buffers[name];
-  const gain = context.createGain();
-  gain.gain.value = volume[name] ?? 1;
-  source.connect(gain).connect(context.destination);
+  source.playbackRate.value = rate;
+  node.gain.value = gain;
+  source.connect(node).connect(context.destination);
   source.start();
+}
+
+export const playSound = name => play(name, volume[name] ?? 1);
+
+// 3D contacts, triggered by physics3d.js: type 'table' | 'die', speed = closing velocity in world units/s.
+// Loudness rises with speed³: a die dropped from the hand (~8.5) is quiet, only fast and cup throws (16+)
+// reach full volume. A slight pitch wobble keeps repeats from sounding identical.
+export function playImpact(type, speed) {
+  const now = performance.now();
+  if (now - windowStart > 25) { windowStart = now; voices = 0; }
+  if (voices >= 8) return; // pileups stay a thud instead of a crackle
+  voices++;
+  const k = Math.min(1, speed / 16) ** 3;
+  play(type, type === 'die' ? Math.min(1.2, 3.4 * k) : 0.95 * k, 1 + (Math.random() - 0.5) * 0.08); // die sample is ~13 dB quieter
 }

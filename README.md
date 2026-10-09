@@ -36,7 +36,8 @@ the one we wanted for our own game nights:
   Save your own with one tap.
 - **12 painted skins** (opal, galaxy, jade, amber, steel, ice, …) plus 11 plain colors, per die.
 - **5 table surfaces:** casino felt, oak, crafts, blue wood, terracotta. Light, dark or automatic theme.
-- **Feels like real dice:** a dice cup animation with sound, or spinning dice. Shake your phone to roll.
+- **Feels like real dice:** a dice cup animation with sound, or spinning dice. In 3D every landing and die-on-die
+  hit sounds when it happens, louder the faster it is. Shake your phone to roll.
 - **2D or 3D:** lightweight 2D by default, or physical 3D dice selected in Settings. Switching keeps your round.
 - **Accessible:** full keyboard control, an optional two-tap mode instead of dragging, respects reduced motion.
 - **8 languages:** English, German, French, Spanish, Portuguese (Brazil), Italian, Dutch and Polish, following
@@ -57,6 +58,10 @@ initializes WebGL; switching back to it stops the simulation and releases the 3D
 space rather than magnifying dice; portrait phones and the compact 2D layout stay unchanged.
 Roll-button throws start in rows around the table center rather than near the bottom edge.
 Dice still settle through physics; no positions are adjusted after landing.
+
+With sound on, 3D plays a short table or die-on-die sample for each physical impact instead of a
+recorded roll. Loudness follows the closing speed cubed, so dice dropped from the hand stay quiet and
+only fast throws reach full volume. Resting and slow sliding contacts are silent.
 
 In 3D, drag gently to move a die without changing its visible value. Held dice follow hand motion
 with a smoothed, slight tilt; the angle is limited by the current face's geometry, including D100.
@@ -133,7 +138,7 @@ the Roll button must not. Pointer clicks must not add another result after an im
 | `state.js` | Load and validate saved state; storage keys |
 | `i18n.js` | Language choice, translations, DOM localization |
 | `layout.js` | Largest dice size that fits the table |
-| `sound.js` | Preloaded Web Audio effects |
+| `sound.js` | Preloaded Web Audio effects; speed-dependent 3D contact sounds |
 | `viewport.js` | App height, including the iOS PWA full-screen workaround |
 | `sw.js` | Service worker: network first, precached offline fallback |
 

@@ -84,8 +84,9 @@ export function orientValue(body, value) {
 // The table top is y = 0 and walls are infinitely high. Held bodies chase held.target with spin held.ang and keep that
 // velocity when released. Returns whether anything still moves.
 let stamp = 0;
-// Prototype contact sounds: `onImpact(type, speed, a, b)` fires once per new hard contact before any
-// impulse is applied, so `speed` is the real closing velocity. type: 'die' (a = other die) | 'table'.
+// onImpact(type, speed) fires once per new hard contact, before any impulse, so `speed` is the real closing
+// velocity of both bodies at the contact point. type: 'table' (table or wall) | 'die'. A contact manifold has
+// several points: a short per-body cooldown makes one impact one sound.
 let impactHook = null, simTime = 0;
 export function step(bodies, dt, bounds, gravity = DOWN, onImpact = null) {
   impactHook = onImpact;
@@ -243,8 +244,12 @@ function addContact(a, b, px, py, pz, nx, ny, nz, s, material, dt) {
   relVel(c);
   const vn = rvx * nx + rvy * ny + rvz * nz;
   if (impactHook && vn < -3) {
-    if (a) impactHook('die', -vn, a, b);
-    else if (simTime - (b.lastImpact ?? -1) > 0.045) { b.lastImpact = simTime; impactHook('table', -vn, null, b); }
+    if (!a) {
+      if (simTime - (b.lastImpact ?? -1) > 0.045) { b.lastImpact = simTime; impactHook('table', -vn); }
+    } else if (simTime - Math.max(a.lastClack ?? -1, b.lastClack ?? -1) > 0.04) {
+      a.lastClack = b.lastClack = simTime;
+      impactHook('die', -vn);
+    }
   }
   // Impacts reaching contact within this substep bounce; otherwise close the gap without bouncing.
   c.target = vn < -BOUNCE && s + vn * dt < 0 ? -material.e * vn : s > 0 ? -s / dt : 0;
