@@ -8,7 +8,7 @@ import { ATLAS_COLS } from './dice3d.js';
 import { MAX_DICE } from './dice.js';
 import { STORY_DICE, STORY_MOTIFS, isStory } from './story.js';
 
-const DPR_MAX = 2;
+const DPR_MAX = 2, DPR_MOVING = 1.25;
 // Narrow FOV: camera() raises the camera to keep the same framing, so edge dice show less of their sides.
 const FOV = 22 * Math.PI / 180, TAN = Math.tan(FOV / 2);
 const PREVIEW_FOV = 28 * Math.PI / 180, PREVIEW_TAN = Math.tan(PREVIEW_FOV / 2), PREVIEW_TILT = 0.3;
@@ -232,10 +232,12 @@ void main() {
     if (i >= uOccN) break;
     vec4 o = uOcc[i];
     vec3 d = o.xyz - vWorld;
-    float l = length(d);
+    float invL = inversesqrt(dot(d, d));
+    vec2 foot = o.xz - uKeyDir.xz * (o.y / uKeyDir.y) - vWorld.xz;
+    float radius = 2.7 * o.w + .15;
     if (uMode == 1) vis = min(vis, sphereShadow(vWorld, uKeyDir, o));
-    else if (length(o.xz - uKeyDir.xz * (o.y / uKeyDir.y) - vWorld.xz) < 2.7 * o.w + .15) near = true;
-    ao *= 1. - clamp(o.w * o.w / (l * l) * max(d.y / l, 0.), 0., 1.);
+    else if (dot(foot, foot) < radius * radius) near = true;
+    ao *= 1. - clamp(o.w * o.w * max(d.y, 0.) * invL * invL * invL, 0., 1.);
   }
   if (near) vis = pcf(vShadow);
   float a = clamp((1. - vis) * uStrength.x + (1. - ao) * uStrength.y, 0., .85);
@@ -785,7 +787,11 @@ export class DiceRenderer {
     const { gl, canvas } = this;
     if (!gl || gl.isContextLost()) return;
     // Reading the rect here would force a synchronous layout every frame (placeTargets wrote styles).
-    const box = this.box ?? this.measure(), dpr = Math.min(devicePixelRatio || 1, DPR_MAX);
+    const box = this.box ?? this.measure();
+    let dpr = Math.min(devicePixelRatio || 1, DPR_MAX);
+    // ponytail: fixed motion DPR cap; adaptive scaling if measured device frame times still demand it.
+    for (const body of tableBodies) if (!body.sleeping || body.held) { dpr = Math.min(dpr, DPR_MOVING); break; }
+    for (const { body } of previews) if (!body.sleeping || body.held) { dpr = Math.min(dpr, DPR_MOVING); break; }
     Object.assign(this.view, { left: box.left, top: box.top, width: box.width, height: box.height, dpr });
     const W = Math.max(1, Math.round(box.width * dpr)), H = Math.max(1, Math.round(box.height * dpr));
     if (canvas.width !== W) canvas.width = W;

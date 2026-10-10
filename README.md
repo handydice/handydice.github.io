@@ -166,6 +166,14 @@ labels, and no numeric sum for an all-story round. Save a mixed story/numeric se
 choosing another preset. Check motif-preserving tray moves, view changes, reload, WebGL context restore
 and offline loading of all 54 icons; measure cold-start performance on actual target phones.
 
+3D rendering caps pixel ratio at 1.25 while table dice or tray previews move, then restores the resting
+cap of 2. Physics substeps, contacts and face randomization are unchanged; shadows remain enabled.
+High-DPI smoke check: compare `document.querySelector('#dice-canvas').width` before, during and after
+a nine-die throw. The moving width must decrease and the resting width must return; repeat with a
+lifted tray die and after WebGL context restore. Check that symbols remain readable while moving.
+The caps are `DPR_MOVING` / `DPR_MAX` in `renderer3d.js`; tune using GPU frame timings on real phones,
+not desktop CPU timings or reduced-motion emulation.
+
 New language: add its code to `LANGUAGES`, a table to `translations` in `i18n.js`, a
 `manifest.<code>.webmanifest`, and a button in `#language` (`index.html`).
 
