@@ -31,10 +31,13 @@ the one we wanted for our own game nights:
 
 - **Up to 12 dice:** D4, D6 (pips or numbers), D8, D10, D12, D20 and D100.
 - **Two trays** to set dice aside between rolls, like Yahtzee or Farkle at the table. Only the dice left on the
-  table are rerolled, and every tray shows its own total.
+  table are rerolled; totals count numeric dice only. Picture-only trays reserve no space for a sum.
 - **One dice screen:** pick a color, tap a die type to put it on the table, tap a die in the table row to put it
-  back. Ready-made sets for Yahtzee, That's Pretty Clever, Clever³, roleplaying (D4–D20) and percentile dice sit
-  below; save your own with one tap.
+  back. Ready-made sets for Yahtzee, That's Pretty Clever, Clever³, roleplaying (D4–D20) and Stories · Classic
+  sit below, with at most six preview dice per row; save your own with one tap.
+- **Stories · Classic:** nine picture dice with 54 local SVG motifs, inspired by the original story-cube
+  grouping. Fixed light bodies and dark symbols in 2D and 3D; mix them with numeric dice and save your
+  selection as an own set. No custom artwork/texture editor. [Mapping and source limits](STORY_CUBES.md).
 - **12 painted skins** (opal, galaxy, jade, amber, steel, ice, …) plus 11 plain colors, per die.
 - **5 table surfaces:** casino felt, oak, crafts, blue wood, terracotta. Light, dark or automatic theme.
 - **Feels like real dice:** a dice cup animation with sound. In 3D every landing and die-on-die
@@ -132,6 +135,7 @@ reduced-motion 3D roll; keyboard and screen-reader clicks must still roll.
 | `index.html` | Markup in English (source language), inline theme script to avoid a flash |
 | `app.js` | UI wiring: rendering, tap/drag/keyboard input, roll animation, dialogs, settings, shake |
 | `dice.js` | Pure dice rules: unbiased rolls, trays, table slots |
+| `story.js` | Nine fixed picture-die groups, local SVG paths and accessible motif labels |
 | `dice3d.js` | Rounded polyhedral geometry, face labels and physical face reading |
 | `physics3d.js` | Gravity, rigid-body contacts, pickup and sleeping |
 | `renderer3d.js` | Native WebGL2 dice, mapped labels, skins, overlapping shadows and exact picking |
@@ -144,7 +148,7 @@ reduced-motion 3D roll; keyboard and screen-reader clicks must still roll.
 | `sw.js` | Service worker: network first, precached offline fallback |
 
 Dice rules, geometry, physics, tray transitions, saved state, 2D layout and language choice are tested
-with `node:assert`. Tests also check all translations and service-worker precaching. Browser smoke:
+with `node:assert`, including story identities in saved rounds/sets and mixed numeric totals. Browser smoke:
 switch 2D → 3D → 2D without changing the round; rotate a picked-up die and store it without changing
 its value; return several tray dice without overlap; reload and switch views offline. Also check
 both empty-tray extensions, value-preserving hand tilt, gentle drops, medium and strong plain flicks,
@@ -157,15 +161,22 @@ the URL includes `?debug`.
 Check that upright-phone orientation events do nothing with tilt off, that turning it off levels
 the table, and that both toggle states survive reload. Real-device sensor permission and threshold
 calibration need a phone.
+For story dice, choose Stories · Classic; verify nine distinct dice in 2D and 3D, motif names in accessible
+labels, and no numeric sum for an all-story round. Save a mixed story/numeric set and restore it after
+choosing another preset. Check motif-preserving tray moves, view changes, reload, WebGL context restore
+and offline loading of all 54 icons; measure cold-start performance on actual target phones.
 
 New language: add its code to `LANGUAGES`, a table to `translations` in `i18n.js`, a
 `manifest.<code>.webmanifest`, and a button in `#language` (`index.html`).
 
 ### Release
 
-1. Bump `CACHE` in `sw.js`; add new files to `ASSETS` (the tests fail if one is missing).
+1. Bump `CACHE` in `sw.js`; add new runtime files to `ASSETS`, then verify an offline reload in the browser.
 2. Push to `main`: GitHub Actions runs the tests and publishes to GitHub Pages (`.github/workflows/pages.yml`).
 
 ## License
 
-[MIT](LICENSE). Contributions and translations welcome.
+[MIT](LICENSE). Story SVGs include Lucide-derived assets under ISC/MIT; their full notices are in
+[icons/story/LICENSE](icons/story/LICENSE). The remaining story motifs are drawn for this project.
+No original Rory's Story Cubes artwork is bundled; the set is an independent interpretation, not an
+official or licensed edition. Contributions and translations welcome.

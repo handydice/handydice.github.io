@@ -6,6 +6,7 @@
 // Render on demand only: no RAF of its own; async assets call `onChange`.
 import { ATLAS_COLS } from './dice3d.js';
 import { MAX_DICE } from './dice.js';
+import { STORY_DICE, STORY_MOTIFS, isStory } from './story.js';
 
 const DPR_MAX = 2;
 // Narrow FOV: camera() raises the camera to keep the same framing, so edge dice show less of their sides.
@@ -43,6 +44,7 @@ function material(color) {
   const [die, pip] = PLAIN[color] ?? ['#edebe5', '#191919'];
   return { die, pip, rough: 0.3, metal: 0 };
 }
+const STORY_MAT = material('white'); // story dice: fixed white body, the SVGs carry their own dark ink
 
 const hex = s => {
   const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s.trim());
@@ -262,7 +264,7 @@ function program(gl, vs, fs) {
   return { p, u };
 }
 
-// ---- texture atlas (2D canvas): faces with numbers, pips and d4 corner labels ----
+// ---- texture atlas (2D canvas): faces with numbers, pips, story motifs and d4 corner labels ----
 let capHeight = 0; // cap height of the digits in FONT, in px
 const AMBIGUOUS = { 0: '0', 1: '1', 6: '9', 8: '8', 9: '6' };
 // 6/9-style values that read as another value upside down get an underline, like real dice.
@@ -328,7 +330,8 @@ function drawPips(ctx, value, x0, y0, C, mat, pipsImg) {
 // One square cell per face (uniform scale, flat y up) plus the edge cell = die color; uploaded with
 // FLIP_Y so the dice3d uv v = 1 − (row + 1 − fy) / rows lands on canvas y = (row + 1 − fy) · cell.
 // `values[k − 1]` is the number printed for geometric face value k (undefined: identity).
-function buildAtlas(shape, mat, numbered, faceImg, pipsImg, values) {
+// `motifs` (story d6): the image per shown value 1..6, drawn upright like a d6 digit; [] = blank faces.
+function buildAtlas(shape, mat, numbered, faceImg, pipsImg, values, motifs) {
   const shown = v => values?.[v - 1] ?? v;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -345,7 +348,14 @@ function buildAtlas(shape, mat, numbered, faceImg, pipsImg, values) {
     ctx.rect(x0, y0, C, C);
     ctx.clip();
     if (faceImg) drawCrop(ctx, faceImg, x0, y0, C);
-    if (shape.sides === 6 && !numbered) drawPips(ctx, shown(face.value), x0, y0, C, mat, pipsImg);
+    if (motifs) {
+      const img = motifs[shown(face.value) - 1], label = face.labels[0];
+      if (img) {
+        ctx.setTransform(1, 0, 0, 1, x0 + label.x * C, y0 + (1 - label.y) * C);
+        ctx.rotate(Math.atan2(label.up[0], label.up[1]));
+        ctx.drawImage(img, -0.34 * C, -0.34 * C, 0.68 * C, 0.68 * C); // 16 % inset per side
+      }
+    } else if (shape.sides === 6 && !numbered) drawPips(ctx, shown(face.value), x0, y0, C, mat, pipsImg);
     // d4 labels: the value of the face opposite each corner, upright toward it (dice3d computes them).
     else for (const label of face.labels) {
       const value = shown(label.value);
@@ -467,6 +477,12 @@ export class DiceRenderer {
         for (const [key, atlas] of this.atlases) if (atlas.pending) { this.gl.deleteTexture(atlas.tex); this.atlases.delete(key); }
         this.onChange?.();
       };
+      // Only story atlases treat a failure as fatal (thrown from render → scene onError).
+      entry.img.onerror = () => {
+        entry.error = new Error(`Could not load ${path}`);
+        entry.error.name = 'DiceImageError';
+        this.onChange?.();
+      };
       entry.img.src = new URL(path, import.meta.url).href;
     }
     return entry.ready ? entry.img : null;
@@ -528,24 +544,45 @@ export class DiceRenderer {
     return m;
   }
 
-  atlas(shape, color, numbered, values, valuesKey) {
+  // The six motif images of a story in value order once all have loaded; false while any is pending.
+  // Requests all six at once; throws the load error of a failed one.
+  motifs(story) {
+    let ready = true;
+    for (const id of STORY_DICE[story]) {
+      const src = STORY_MOTIFS[id].src;
+      if (this.image(src)) continue;
+      const { error } = this.images.get(src);
+      if (error) throw error;
+      ready = false;
+    }
+    return ready && STORY_DICE[story].map(id => this.image(STORY_MOTIFS[id].src));
+  }
+
+  // `story`: a story.js id on a d6 overrides color/skin/numbered with the fixed motif material.
+  atlas(shape, color, numbered, values, valuesKey, story) {
+    story = shape.sides === 6 && isStory(story) ? story : '';
     numbered = shape.sides === 6 && !!numbered;
-    const key = `${shape.sides}|${color ?? ''}|${numbered}|${values ? valuesKey ?? values.join() : ''}`;
-    let a = this.atlases.get(key);
+    const order = values ? valuesKey ?? values.join() : '';
+    let key = story ? `story|${story}|${order}` : `${shape.sides}|${color ?? ''}|${numbered}|${order}`;
+    let a = this.atlases.get(key), motifs;
+    // Until all six motifs loaded, every story die shares one blank atlas (no per-icon rebuilds).
+    if (!a && story && !(motifs = this.motifs(story))) a = this.atlases.get(key = 'story|');
     if (a) {
       this.atlases.delete(key); // least recently used goes first
       this.atlases.set(key, a);
       return a;
     }
-    const mat = material(color);
-    const usesPips = shape.sides === 6 && !numbered;
-    const faceImg = mat.skin ? this.image(`skins/${mat.skin}/face.webp`) : null;
-    const pipsImg = mat.skin && usesPips ? this.image(`skins/${mat.skin}/pips.webp`) : null;
-    a = {
-      tex: this.upload(buildAtlas(shape, mat, numbered, faceImg, pipsImg, values), true),
-      rough: mat.rough, metal: mat.metal,
-      pending: !!mat.skin && (!faceImg || usesPips && !pipsImg),
-    };
+    let mat = STORY_MAT, canvas, pending = false;
+    if (story) canvas = buildAtlas(shape, mat, false, null, null, values, motifs || []);
+    else {
+      mat = material(color);
+      const usesPips = shape.sides === 6 && !numbered;
+      const faceImg = mat.skin ? this.image(`skins/${mat.skin}/face.webp`) : null;
+      const pipsImg = mat.skin && usesPips ? this.image(`skins/${mat.skin}/pips.webp`) : null;
+      canvas = buildAtlas(shape, mat, numbered, faceImg, pipsImg, values);
+      pending = !!mat.skin && (!faceImg || usesPips && !pipsImg);
+    }
+    a = { tex: this.upload(canvas, true), rough: mat.rough, metal: mat.metal, pending };
     this.atlases.set(key, a);
     if (this.atlases.size > ATLAS_CACHE) {
       const [oldKey, old] = this.atlases.entries().next().value;
@@ -669,7 +706,7 @@ export class DiceRenderer {
 
   drawDie(body, pos) {
     const { gl } = this, u = this.die.u;
-    const a = this.atlas(body.shape, body.color, body.numbered, body.faceValues, body.faceValuesKey);
+    const a = this.atlas(body.shape, body.color, body.numbered, body.faceValues, body.faceValuesKey, body.story);
     gl.uniformMatrix4fv(u.uModel, false, model(this.mat.model, body.quat, pos));
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, a.tex);
@@ -837,7 +874,7 @@ export class DiceRenderer {
       gl.deleteVertexArray(this.quad);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
-    for (const e of this.images.values()) e.img.onload = null;
+    for (const e of this.images.values()) e.img.onload = e.img.onerror = null;
     this.atlases.clear();
     this.meshes.clear();
     this.textures.clear();

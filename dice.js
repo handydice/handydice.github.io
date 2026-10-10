@@ -1,3 +1,5 @@
+import { isStory } from './story.js';
+
 export const MAX_DICE = 12;
 // skin-* are painted D6 faces from skins/<name>/; on other dice they fall back to a plain color.
 export const COLORS = ['white', 'red', 'blue', 'yellow', 'green', 'orange', 'brown', 'purple', 'turquoise', 'pink', 'gray',
@@ -36,7 +38,7 @@ export function randomFaceValues(sides, integer = roll) {
   return map;
 }
 
-export const total = dice => dice.reduce((s, d) => s + d.value, 0);
+export const total = dice => dice.reduce((s, d) => s + (isStory(d.story) ? 0 : d.value), 0);
 
 // Dice of the next roll: the table dice, or all of them once every die is in a tray.
 export const rollable = dice => dice.every(d => d.tray) ? dice : dice.filter(d => !d.tray);

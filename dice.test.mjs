@@ -15,6 +15,8 @@ for (const sides of [2, 4, 6, 8, 10, 12, 20, 100, 7]) {
 }
 assert.equal(total([{ value: 3 }, { value: 6 }]), 9);
 assert.equal(total([]), 0);
+assert.equal(total([{ value: 6, story: 'classic-1' }, { value: 4 }, { value: 17 }]), 21);
+assert.equal(total([{ value: 6, story: 'classic-9' }]), 0);
 
 assert(isSides(4) && isSides(100));
 assert(!isSides(7) && !isSides(1000) && !isSides('6'));

@@ -1,4 +1,5 @@
 import { COLORS, MAX_DICE, isSides, roll } from './dice.js';
+import { isStory } from './story.js';
 
 export const STATE_KEY = 'handydice-state';
 export const THEME_KEY = 'handydice-theme'; // also read by the inline script in index.html
@@ -34,18 +35,21 @@ function loadDie(d) {
   const die = { sides: d.sides, value: isFace(d.value, d.sides) ? d.value : roll(d.sides) };
   if (isTray(d.tray)) die.tray = d.tray;
   if (COLORS.includes(d.color)) die.color = d.color;
-  if (d.sides === 6 && d.numbered === true) die.numbered = true;
+  if (d.sides === 6 && isStory(d.story)) die.story = d.story;
+  else if (d.sides === 6 && d.numbered === true) die.numbered = true;
   if (Number.isInteger(d.slot) && d.slot >= 0) die.slot = d.slot;
   return die;
 }
 
 function loadSet(set) {
-  const numbered = set.dice.map((sides, i) => sides === 6 && set.numbered?.[i] === true ? true : undefined);
+  const stories = set.dice.map((sides, i) => sides === 6 && isStory(set.stories?.[i]) ? set.stories[i] : undefined);
+  const numbered = set.dice.map((sides, i) => sides === 6 && !stories[i] && set.numbered?.[i] === true ? true : undefined);
   return {
     name: set.name,
     dice: set.dice,
     colors: set.dice.map((_, i) => COLORS.includes(set.colors?.[i]) ? set.colors[i] : undefined),
     ...(numbered.some(Boolean) ? { numbered } : {}),
+    ...(stories.some(Boolean) ? { stories } : {}),
   };
 }
 

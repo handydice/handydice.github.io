@@ -4,6 +4,7 @@ import { fitDice } from './layout.js';
 import { STATE_KEY, THEME_KEY, loadState, saveState } from './state.js';
 import { loadSounds, playImpact, playSound, resumeSounds } from './sound.js';
 import { watchViewport } from './viewport.js';
+import { STORY_DICE, isStory, storyFace } from './story.js';
 
 localize(document);
 
@@ -19,8 +20,6 @@ const TYPE_OPTIONS = [
   { sides: 10 }, { sides: 12 }, { sides: 20 }, { sides: 100 },
 ];
 const SETS = [
-  { name: `1×${dieType(6)}`, dice: [6] },
-  { name: `2×${dieType(6)}`, dice: [6, 6] },
   { name: `${t('Yahtzee')} · 5×${dieType(6)}`, dice: [6, 6, 6, 6, 6] },
   {
     name: `${t("That's Pretty Clever")} · 6×${dieType(6)}`,
@@ -32,9 +31,8 @@ const SETS = [
     dice: [6, 6, 6, 6, 6, 6],
     colors: ['white', 'brown', 'blue', 'turquoise', 'pink', 'yellow'],
   },
-  { name: dieType(20), dice: [20] },
   { name: `${t('Roleplaying')} · ${dieType(4)}–${dieType(20)}`, dice: [4, 6, 8, 10, 12, 20], numbered: [undefined, true] },
-  { name: `${t('Percentile')} · ${dieType(100)}`, dice: [100] },
+  { name: t('Stories · Classic'), dice: Array(9).fill(6), stories: Object.keys(STORY_DICE) },
 ];
 // Pip positions in a 3×3 grid (0 = top left … 8 = bottom right).
 const PIPS = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
@@ -51,7 +49,9 @@ flickDebug.hidden = true;
 flickDebug.setAttribute('aria-live', 'polite');
 $('main').append(flickDebug);
 function showRenderError(error) {
-  renderError.textContent = t('3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.');
+  renderError.textContent = error.name === 'DiceImageError'
+    ? t('Dice images could not be loaded. Reload the app and try again.')
+    : t('3D rendering needs WebGL2. Choose 2D in Settings, or enable graphics acceleration and reload.');
   renderError.hidden = false;
   console.error(error);
 }
@@ -167,14 +167,19 @@ function interrupt() {
 }
 
 function face(d) {
+  const motif = storyFace(d.story, d.value);
+  if (motif) return `<img class="story-face" src="${motif.src}" alt="" draggable="false">`;
   if (d.sides === 6 && !d.numbered) return `<span class="pips" data-value="${d.value}">${[...Array(9)].map((_, i) => `<i${PIPS[d.value].includes(i) ? ' class="on"' : ''}></i>`).join('')}</span>`;
   return `<span class="num">${d.value}</span><small>${dieType(d.sides)}</small>`;
 }
 // Die type without a roll: classic D6 shows five pips; numeric dice show their side count.
-const typeFace = (sides, numbered = false) => sides === 6 && !numbered ? face({ sides, value: 5 }) : `<span class="num">${sides}</span><small>${dieType(sides)}</small>`;
+const typeFace = (sides, numbered = false, story) => isStory(story) ? face({ sides, value: 1, story })
+  : sides === 6 && !numbered ? face({ sides, value: 5 }) : `<span class="num">${sides}</span><small>${dieType(sides)}</small>`;
 const sidesFace = (sides, numbered = false) => sides === 6 && !numbered ? typeFace(sides) : `<span class="num">${sides}</span>`;
 const shapeOf = sides => `d${sides}`;
-const dieLabel = d => `${d.color ? COLOR_NAMES[d.color] + ' ' : ''}${dieType(d.sides)}${d.sides === 6 ? ` ${t(d.numbered ? 'Number' : 'Pips')}` : ''}`;
+const dieLabel = d => isStory(d.story) ? `${t('Story die')} ${d.story.slice('classic-'.length)}`
+  : `${d.color ? COLOR_NAMES[d.color] + ' ' : ''}${dieType(d.sides)}${d.sides === 6 ? ` ${t(d.numbered ? 'Number' : 'Pips')}` : ''}`;
+const sumLabel = dice => dice.some(d => !d.story) ? `Σ ${total(dice)}` : '';
 
 function dieEl(d) {
   const flat = state.view === '2d';
@@ -184,10 +189,11 @@ function dieEl(d) {
   el.className = `die${flat ? '' : ' rendered-die'}${d === selected ? ' selected' : ''}`;
   el.tabIndex = 0;
   el.setAttribute('role', 'button');
-  el.dataset.color = d.color ?? '';
+  el.dataset.color = d.story ? 'white' : d.color ?? '';
   if (flat) el.dataset.shape = shapeOf(d.sides);
   const action = state.clickMode === 'select' ? t('select') : d.tray ? t('return to table') : t('move to tray');
-  el.setAttribute('aria-label', `${dieLabel(d)}: ${d.value}, ${action}`);
+  const motif = storyFace(d.story, d.value);
+  el.setAttribute('aria-label', `${dieLabel(d)}: ${motif ? t(motif.label) : d.value}, ${action}`);
   el.setAttribute('aria-describedby', flat ? 'drag-help' : 'drag-help rotate-help');
   el.setAttribute('aria-pressed', d === selected);
   if (flat) el.innerHTML = face(d);
@@ -218,8 +224,8 @@ function render() {
   for (const tray of trayEls) {
     const dice = state.dice.filter(d => d.tray === tray.dataset.tray);
     tray.firstElementChild.replaceChildren(...dice.map(dieEl));
-    tray.lastElementChild.textContent = dice.length ? `Σ ${total(dice)}` : '';
-    tray.lastElementChild.hidden = !dice.length;
+    tray.lastElementChild.textContent = sumLabel(dice);
+    tray.lastElementChild.hidden = !tray.lastElementChild.textContent;
     tray.classList.toggle('occupied', dice.length > 0);
   }
   markPressed($('#view'), 'view', state.view);
@@ -230,7 +236,7 @@ function render() {
   document.documentElement.dataset.surface = state.surface;
   $('#click-mode').value = state.clickMode;
   // Roll number of the turn: the full roll counts as #1, so the first reroll shows #2.
-  $('#total').textContent = onTable.length ? `Σ ${total(onTable)}${state.rerolls ? ` #${state.rerolls + 1}` : ''}` : '';
+  $('#total').textContent = onTable.length ? `${sumLabel(onTable)}${state.rerolls ? ` #${state.rerolls + 1}` : ''}`.trim() : '';
   $('#roll-label').textContent = state.dice.length && !onTable.length ? t('Reroll all dice') : t('Roll');
   $('#reset').hidden = onTable.length === state.dice.length;
   $('#bag-open').disabled = rolling;
@@ -578,14 +584,16 @@ $('#open').onclick = () => {
 };
 
 // Dice bag: one screen to put dice on the table, take them back and lay out sets.
-const currentName = () => diceName(state.dice.map(d => d.sides));
+const currentName = () => [state.dice.some(d => d.story) ? t('Stories · Classic') : '',
+  diceName(state.dice.filter(d => !d.story).map(d => d.sides))].filter(Boolean).join(' · ');
 const bagColors = $('#bag .palette'), bagTypes = $('#bag .die-types'), tableDice = $('#table-dice');
-function newDie(sides, color, numbered) {
+function newDie(sides, color, numbered, story) {
   const d = { sides, value: roll(sides), color: color || undefined };
-  if (sides === 6 && numbered) d.numbered = true;
+  if (sides === 6 && isStory(story)) { d.story = story; d.color = 'white'; }
+  else if (sides === 6 && numbered) d.numbered = true;
   return d;
 }
-const miniDie = (sides, color, numbered) => `<span class="die" data-shape="${shapeOf(sides)}" data-color="${color ?? ''}" aria-hidden="true">${typeFace(sides, numbered)}</span>`;
+const miniDie = (sides, color, numbered, story) => `<span class="die" data-shape="${shapeOf(sides)}" data-color="${story ? 'white' : color ?? ''}" aria-hidden="true">${typeFace(sides, numbered, story)}</span>`;
 
 bagColors.replaceChildren(...Object.entries(COLOR_NAMES).map(([color, name]) => {
   const b = document.createElement('button');
@@ -644,7 +652,7 @@ function renderBag() {
     b.className = d === justAdded ? 'mini new' : 'mini';
     b.die = d;
     b.setAttribute('aria-label', `${dieLabel(d)}: ${t('remove')}`);
-    b.innerHTML = miniDie(d.sides, d.color, d.numbered);
+    b.innerHTML = miniDie(d.sides, d.color, d.numbered, d.story);
     return b;
   }));
   justAdded = null;
@@ -674,10 +682,10 @@ function presetEl(set) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'preset';
-  b.innerHTML = `<span class="minis">${set.dice.map((s, i) => miniDie(s, set.colors?.[i], set.numbered?.[i])).join('')}</span><span class="name"></span>`;
+  b.innerHTML = `<span class="minis">${set.dice.map((s, i) => miniDie(s, set.colors?.[i], set.numbered?.[i], set.stories?.[i])).join('')}</span><span class="name"></span>`;
   b.lastChild.textContent = set.name;
   b.onclick = () => {
-    state.dice = set.dice.map((sides, i) => newDie(sides, set.colors?.[i], set.numbered?.[i] === true));
+    state.dice = set.dice.map((sides, i) => newDie(sides, set.colors?.[i], set.numbered?.[i] === true, set.stories?.[i]));
     bag.close();
     commit();
     doRoll();
@@ -732,6 +740,8 @@ $('#save-set').onsubmit = e => {
   const numbered = state.dice.map(d => d.sides === 6 && d.numbered === true ? true : undefined);
   const set = { name: $('#set-name').value.trim() || currentName(), dice: state.dice.map(d => d.sides), colors: state.dice.map(d => d.color) };
   if (numbered.some(Boolean)) set.numbered = numbered;
+  const stories = state.dice.map(d => d.story);
+  if (stories.some(Boolean)) set.stories = stories;
   state.sets.unshift(set);
   saveState(state);
   $('#save-set').hidden = true;

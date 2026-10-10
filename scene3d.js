@@ -95,6 +95,7 @@ export class DiceScene {
       }
       body.color = d.color || 'white';
       body.numbered = !!d.numbered;
+      body.story = d.story; // renderer validates it; story atlases ignore color/numbered
       if (body.tray !== d.tray) {
         if (!d.tray) {
           this.placeOnTable(body);

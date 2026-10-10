@@ -1,9 +1,19 @@
-// Bump on every release so installed clients precache the new files; sw.test.mjs checks ASSETS.
-const CACHE = 'handydice-2d-3d-v12';
+// Bump on every release so installed clients precache the new files.
+const CACHE = 'handydice-2d-3d-v14';
 const ASSETS = [
   './', './index.html', './style.css',
   './app.js', './dice.js', './layout.js', './i18n.js', './sound.js', './state.js', './viewport.js',
   './dice3d.js', './physics3d.js', './renderer3d.js', './scene3d.js',
+  './story.js', './icons/story/LICENSE',
+  './icons/story/house.svg', './icons/story/lightbulb.svg', './icons/story/sleep.svg', './icons/story/speech.svg', './icons/story/clock.svg', './icons/story/arrow.svg',
+  './icons/story/lock.svg', './icons/story/footprint.svg', './icons/story/flame.svg', './icons/story/sheep.svg', './icons/story/magnet.svg', './icons/story/learner.svg',
+  './icons/story/message.svg', './icons/story/pyramid.svg', './icons/story/tower.svg', './icons/story/rainbow.svg', './icons/story/tree.svg', './icons/story/eye.svg',
+  './icons/story/earth.svg', './icons/story/plane.svg', './icons/story/smile.svg', './icons/story/building.svg', './icons/story/flashlight.svg', './icons/story/apple.svg',
+  './icons/story/key.svg', './icons/story/shooting-star.svg', './icons/story/question.svg', './icons/story/tent.svg', './icons/story/spinning-object.svg', './icons/story/frown.svg',
+  './icons/story/beetle.svg', './icons/story/die.svg', './icons/story/magnifier.svg', './icons/story/shadow.svg', './icons/story/hand.svg', './icons/story/turtle.svg',
+  './icons/story/masks.svg', './icons/story/fish.svg', './icons/story/parachute.svg', './icons/story/keyhole.svg', './icons/story/sunflower.svg', './icons/story/arrows.svg',
+  './icons/story/book.svg', './icons/story/bridge.svg', './icons/story/abacus.svg', './icons/story/moon.svg', './icons/story/wand.svg', './icons/story/bee.svg',
+  './icons/story/alien.svg', './icons/story/lightning.svg', './icons/story/phone.svg', './icons/story/scales.svg', './icons/story/direction.svg', './icons/story/cane.svg',
   './manifest.de.webmanifest', './manifest.en.webmanifest', './manifest.fr.webmanifest', './manifest.es.webmanifest', './manifest.pt.webmanifest',
   './manifest.it.webmanifest', './manifest.nl.webmanifest', './manifest.pl.webmanifest', './icon.svg', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './icon-maskable-512.png',

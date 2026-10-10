@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { MAX_DICE } from './dice.js';
 import { loadState } from './state.js';
+import { storyFace } from './story.js';
 
 const SURFACES = ['', 'oak'];
 const load = saved => loadState(JSON.stringify(saved), SURFACES);
@@ -52,6 +53,31 @@ assert.deepEqual(display.dice, [
 assert.deepEqual(display.sets, [{
   name: 'Numbered', dice: [6, 20], colors: [undefined, undefined], numbered: [true, undefined],
 }]);
+
+// Story identity and the rolled motif survive reload and saved-set reconstruction.
+const { state: stories } = load({
+  dice: [
+    { sides: 6, value: 2, story: 'classic-1', numbered: true, tray: 't1' },
+    { sides: 6, value: 6, story: 'classic-9' },
+    { sides: 20, value: 17, story: 'classic-1' },
+    { sides: 6, value: 3, story: '../../foreign.svg' },
+    { sides: 6, value: 4, story: '__proto__' },
+  ],
+  sets: [{ name: 'Mixed', dice: [6, 20, 6], stories: ['classic-9', 'classic-1', '__proto__'], numbered: [true, true, true] }],
+});
+assert.deepEqual(stories.dice, [
+  { sides: 6, value: 2, story: 'classic-1', tray: 't1' },
+  { sides: 6, value: 6, story: 'classic-9' },
+  { sides: 20, value: 17 },
+  { sides: 6, value: 3 },
+  { sides: 6, value: 4 },
+]);
+assert.deepEqual(stories.sets, [{
+  name: 'Mixed', dice: [6, 20, 6], colors: [undefined, undefined, undefined],
+  stories: ['classic-9', undefined, undefined], numbered: [undefined, undefined, true],
+}]);
+assert.equal(storyFace(stories.dice[0].story, stories.dice[0].value).label, 'Light bulb');
+assert.equal(storyFace(stories.dice[1].story, stories.dice[1].value).label, 'Walking stick');
 
 // Broken dice are repaired or dropped, so rendering cannot crash on stored data.
 const { state: repaired } = load({
