@@ -26,6 +26,7 @@ export function loadState(json, surfaces) {
       rerolls: Number.isInteger(s.rerolls) && s.rerolls > 0 ? s.rerolls : 0,
       view: s.view === '3d' ? '3d' : '2d',
       tilt: s.tilt === true,
+      shake: s.shake === true,
     },
   };
 }

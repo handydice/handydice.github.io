@@ -6,10 +6,10 @@
 works like an app, offline too.
 
 <p align="center">
-  <img src="screenshots/hero.webp" width="24%" alt="Five white dice on green casino felt, two set aside in the tray">
-  <img src="screenshots/rpg.webp" width="24%" alt="Colorful D4 to D100 roleplaying dice on an oak table">
-  <img src="screenshots/skins.webp" width="24%" alt="Twelve D6 in painted skins: opal, wood, galaxy, jade, amber and more">
-  <img src="screenshots/trays.webp" width="24%" alt="Light theme with dice collected in a top and a bottom tray">
+  <img src="screenshots/hero.webp" width="24%" alt="Five white 3D dice on green casino felt, two set aside in the tray">
+  <img src="screenshots/rpg.webp" width="24%" alt="Colorful 3D D4 to D100 roleplaying dice on an oak table">
+  <img src="screenshots/skins.webp" width="24%" alt="Twelve 3D D6 in painted skins: opal, wood, galaxy, jade, amber and more">
+  <img src="screenshots/trays.webp" width="24%" alt="Light theme with 3D dice collected in a top and a bottom tray">
 </p>
 
 ## Why another dice app?
@@ -49,6 +49,7 @@ the one we wanted for our own game nights:
 - **Remembers your round:** dice, trays and sets survive a reload.
 
 <p align="center">
+  <img src="screenshots/stories.webp" width="24%" alt="Nine 3D story dice with picture motifs on a crafts table">
   <img src="screenshots/dice.webp" width="24%" alt="Dice screen: dice on the table, color and skin row, die types and sets">
   <img src="screenshots/settings.webp" width="24%" alt="Settings with sound, theme and table surface choices">
 </p>
@@ -92,12 +93,19 @@ quick flicks show none of them, but drops into a tray are recognized immediately
 Settings → **Table tilt** enables phone-controlled table inclination. It is **off by default**
 and saved on this device. Off keeps gravity perpendicular to the table, even on an upright phone,
 and immediately levels an already tilted table. Orientation permission is requested only when tilt is
-enabled; denied permission leaves it off. When enabled, gravity, the die's geometry and contact
+enabled in the active 3D view; denied permission leaves it off. When enabled, gravity, the die's geometry and contact
 friction determine whether it rolls or slides. Tray dice stay locked; tilting never renumbers
-dice or triggers shake-to-roll. 2D keeps shake-to-roll. The simulated slope is capped at 75° to
+dice or triggers shake-to-roll. The simulated slope is capped at 75° to
 prevent off-table falls. Empty upper and lower trays independently extend the playable area;
 occupied trays restore their own boundary. Finishing a throw preserves the resting position
 and orientation.
+
+Settings → **Shake to roll** enables phone shaking in 2D. It is **off by default** and saved on
+this device. Motion permission is requested only when enabled in the active 2D view; denial leaves
+it off. Disabling shake or switching views cancels a pending shake. Neither sensor is requested at
+startup or on the first click with its active-view feature off. Restored opt-ins request access on
+the first user gesture. Requests are reused within the page, avoiding duplicate prompts.
+2D roll completion preserves the already landed dice/image nodes instead of rebuilding SVGs again.
 
 The Roll button assigns fresh cryptographic numbering **before** each 3D throw.
 Opposite-number pairs are shuffled and independently flipped, making every physical face uniform
@@ -159,7 +167,11 @@ For 3D pointer gestures, check that a quick flick shows no tray hints, a held dr
 be visibly larger than before, with full trays still scrollable. The Crypto badge stays hidden unless
 the URL includes `?debug`.
 Check that upright-phone orientation events do nothing with tilt off, that turning it off levels
-the table, and that both toggle states survive reload. Real-device sensor permission and threshold
+the table, and that both sensor settings survive reload. With both off, the first click must not
+request sensor permission. Saved tilt in 2D and saved shake in 3D must not request inactive-view access.
+Test granted and denied access, enabled shake-to-roll, and cancellation when shake is turned off.
+After a nine-story-die 2D roll, the landed images must stay connected when Roll becomes enabled;
+results must be saved and the dice bag enabled. Real-device prompts, SVG blinking and shake-threshold
 calibration need a phone.
 For story dice, choose Stories · Classic; verify nine distinct dice in 2D and 3D, motif names in accessible
 labels, and no numeric sum for an all-story round. Save a mixed story/numeric set and restore it after

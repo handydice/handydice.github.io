@@ -18,7 +18,7 @@ for (const json of [null, '{', JSON.stringify({ dice: Array(MAX_DICE + 1).fill({
 const round = {
   dice: [{ sides: 20, value: 17, tray: 't1', color: 'red', slot: 2 }, { sides: 6, value: 3, slot: 0 }],
   sets: [{ name: 'Mine', dice: [6, 20], colors: ['blue', undefined] }],
-  lastTray: 't1', surface: 'oak', sound: false, clickMode: 'select', rerolls: 2, view: '3d', tilt: true,
+  lastTray: 't1', surface: 'oak', sound: false, clickMode: 'select', rerolls: 2, view: '3d', tilt: true, shake: true,
 };
 const restoredRound = load(round);
 assert.equal(restoredRound.restored, true);
@@ -31,9 +31,11 @@ for (const view of [undefined, '3D', 'webgl', 1]) {
   assert.deepEqual(state, { ...round, view: '2d' });
 }
 
-// Only an explicit boolean opt-in may enable sensor tilt in a saved round.
-for (const tilt of [true, false, undefined, 'true', 1, null]) {
-  assert.deepEqual(load({ ...round, tilt }).state, { ...round, tilt: tilt === true });
+// Stored sensor features require an explicit boolean opt-in, never a truthy value.
+for (const key of ['tilt', 'shake']) {
+  for (const value of [true, false, undefined, 'true', 1, null]) {
+    assert.deepEqual(load({ ...round, [key]: value }).state, { ...round, [key]: value === true });
+  }
 }
 
 // Numeric faces are an optional D6 presentation; plain D6 and every other die stay unchanged.

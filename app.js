@@ -232,6 +232,7 @@ function render() {
   document.documentElement.dataset.view = state.view;
   markPressed($('#sound'), 'sound', state.sound ? 'on' : 'off');
   markPressed($('#tilt'), 'tilt', state.tilt ? 'on' : 'off');
+  markPressed($('#shake'), 'shake', state.shake ? 'on' : 'off');
   markPressed($('#surface'), 'surface', state.surface);
   document.documentElement.dataset.surface = state.surface;
   $('#click-mode').value = state.clickMode;
@@ -505,6 +506,7 @@ async function doRoll(shaken = false) {
   // When shaken, the rattle already played.
   if (cup) { if (flat) sound('throw'); }
   else if (!shaken) sound('shuffle'); // reduced motion rattles on the roll
+  let landed2D = false;
   try {
     if (flat && cup) {
       // 1. Collect: the dice fly into the roll button.
@@ -537,6 +539,7 @@ async function doRoll(shaken = false) {
           { transform: `translate(0, 0) scale(1.1) rotate(${Math.round((Math.random() - .5) * 16)}deg)`, opacity: 1, offset: .7 },
           { transform: 'none', opacity: 1 },
         ], { duration: 420, delay: i * 70, easing: 'cubic-bezier(.2, .8, .3, 1)', fill: 'backwards' })));
+      landed2D = true;
     } else {
       render();
       flickDebug.hidden = true;
@@ -548,7 +551,11 @@ async function doRoll(shaken = false) {
     rolling = false;
     $('#roll').disabled = false;
     document.body.classList.remove('rolling', 'sum-pending');
-    commit();
+    if (landed2D) {
+      // Values and slots are already rendered. Replacing the landed SVG nodes makes symbols blink.
+      $('#bag-open').disabled = false;
+      saveState(state);
+    } else commit(); // 3D results and interrupted/error paths still need a full render.
   }
 }
 
@@ -770,10 +777,12 @@ setTheme(document.documentElement.dataset.theme);
 onPick($('#view'), 'view', view => {
   if (rolling || view === state.view) return;
   interrupt();
+  cancelShake();
   state.view = view;
   if (view === '2d') stopScene();
   commit(); // publishes data-view before the 3D canvas is measured
   if (view === '3d') startScene();
+  requestActiveSensorPermission();
 });
 onPick($('#surface'), 'surface', surface => {
   state.surface = surface;
@@ -787,19 +796,40 @@ onPick($('#sound'), 'sound', value => {
   }
   commit();
 });
-async function requestTiltPermission() {
-  try {
-    const permission = await window.DeviceOrientationEvent?.requestPermission?.();
-    if (!permission || permission === 'granted') return;
-  } catch {}
-  state.tilt = false;
-  scene?.setTilt(0, 0);
-  commit();
+// iOS requires a user gesture. Cache each request so the toggle and its bubbling click do not ask twice.
+const sensorPermissions = new Map();
+function requestActiveSensorPermission() {
+  const key = state.view === '3d' ? 'tilt' : 'shake';
+  if (!state[key]) return;
+  const Sensor = key === 'tilt' ? window.DeviceOrientationEvent : window.DeviceMotionEvent;
+  if (!Sensor?.requestPermission) return;
+  let permission = sensorPermissions.get(key);
+  if (!permission) {
+    try {
+      permission = Promise.resolve(Sensor.requestPermission()).then(result => result === 'granted', () => false);
+    } catch {
+      permission = Promise.resolve(false);
+    }
+    sensorPermissions.set(key, permission);
+  }
+  permission.then(granted => {
+    if (granted || !state[key]) return;
+    state[key] = false;
+    if (key === 'tilt') scene?.setTilt(0, 0);
+    else cancelShake();
+    commit();
+  });
 }
 onPick($('#tilt'), 'tilt', value => {
   state.tilt = value === 'on';
-  if (state.tilt) requestTiltPermission();
+  if (state.tilt) requestActiveSensorPermission();
   else scene?.setTilt(0, 0);
+  commit();
+});
+onPick($('#shake'), 'shake', value => {
+  state.shake = value === 'on';
+  if (state.shake) requestActiveSensorPermission();
+  else cancelShake();
   commit();
 });
 markPressed($('#language'), 'language', languagePreference);
@@ -829,9 +859,15 @@ addEventListener('appinstalled', () => { $('#install').hidden = true; });
 // Calibration (m/s², including gravity ≈ 9.8): START = jolt to begin, KEEP = still shaking, STILL_MS = rest before the throw.
 const SHAKE_START = 22, SHAKE_KEEP = 15, SHAKE_STILL_MS = 350;
 let lastMag = 0, shakeTimer = null;
+function cancelShake() {
+  clearTimeout(shakeTimer);
+  shakeTimer = null;
+  lastMag = 0;
+  for (const el of document.querySelectorAll('.rattle')) el.classList.remove('rattle');
+}
 addEventListener('devicemotion', e => {
   const a = e.accelerationIncludingGravity;
-  if (state.view !== '2d' || !a || rolling || cancelDrag || selected || dialogOpen() || !state.dice.length) return;
+  if (state.view !== '2d' || !state.shake || !a || rolling || cancelDrag || selected || dialogOpen() || !state.dice.length) return;
   const m = Math.hypot(a.x ?? 0, a.y ?? 0, a.z ?? 0);
   const jolt = m > SHAKE_START && m - lastMag > 15;
   lastMag = m;
@@ -853,11 +889,8 @@ addEventListener('deviceorientation', e => {
   if (state.view !== '3d' || !state.tilt || rolling || dialogOpen()) return;
   scene?.setTilt(e.beta, e.gamma, screen.orientation?.angle ?? window.orientation ?? 0);
 }, { passive: true });
-// iOS sensor permission requires a user gesture; orientation is requested only after opt-in.
-addEventListener('click', () => {
-  window.DeviceMotionEvent?.requestPermission?.().catch(() => {});
-  if (state.tilt) requestTiltPermission();
-}, { once: true });
+// Restore an opted-in sensor on the first gesture after reload, but only in its active view.
+addEventListener('click', requestActiveSensorPermission, { once: true });
 
 // Startup
 
