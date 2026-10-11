@@ -10,6 +10,7 @@ const load = saved => loadState(JSON.stringify(saved), SURFACES);
 for (const json of [null, '{', JSON.stringify({ dice: Array(MAX_DICE + 1).fill({ sides: 6, value: 1 }) })]) {
   const { state, restored } = loadState(json, SURFACES);
   assert.equal(restored, false);
+  assert.equal(state.view, '3d');
   assert.equal(state.dice.length, 5);
   for (const d of state.dice) assert(d.sides === 6 && d.value >= 1 && d.value <= 6);
 }
@@ -24,11 +25,11 @@ const restoredRound = load(round);
 assert.equal(restoredRound.restored, true);
 assert.deepEqual(restoredRound.state, round);
 
-// Installs from before the display choice, or a corrupted choice, fall back to 2D without losing the round.
-for (const view of [undefined, '3D', 'webgl', 1]) {
+// Saved display choices survive; absent or corrupted choices use 3D without losing the round.
+for (const view of ['2d', '3d', undefined, '3D', 'webgl', 1, null]) {
   const { state, restored } = load({ ...round, view });
   assert.equal(restored, true);
-  assert.deepEqual(state, { ...round, view: '2d' });
+  assert.deepEqual(state, { ...round, view: view === '2d' ? '2d' : '3d' });
 }
 
 // Stored sensor features require an explicit boolean opt-in, never a truthy value.

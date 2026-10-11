@@ -42,7 +42,7 @@ the one we wanted for our own game nights:
 - **5 table surfaces:** casino felt, oak, crafts, blue wood, terracotta. Light, dark or automatic theme.
 - **Feels like real dice:** a dice cup animation with sound. In 3D every landing and die-on-die
   hit sounds when it happens, louder the faster it is. Shake your phone to roll.
-- **2D or 3D:** lightweight 2D by default, or physical 3D dice selected in Settings. Switching keeps your round.
+- **2D or 3D:** physical 3D dice by default, or lightweight 2D selected in Settings. Saved display choices are preserved; switching keeps your round.
 - **Accessible:** full keyboard control, an optional two-tap mode instead of dragging, respects reduced motion.
 - **8 languages:** English, German, French, Spanish, Portuguese (Brazil), Italian, Dutch and Polish, following
   your browser or chosen manually.

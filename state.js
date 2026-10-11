@@ -24,7 +24,7 @@ export function loadState(json, surfaces) {
       sound: s.sound !== false,
       clickMode: s.clickMode === 'select' ? s.clickMode : 'direct',
       rerolls: Number.isInteger(s.rerolls) && s.rerolls > 0 ? s.rerolls : 0,
-      view: s.view === '3d' ? '3d' : '2d',
+      view: s.view === '2d' ? '2d' : '3d',
       tilt: s.tilt === true,
       shake: s.shake === true,
     },
