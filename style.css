@@ -7,6 +7,10 @@
   --border: #2a3040;
   --accent: #ffb02e;
   --accent-fg: #1a1205;
+  /* Accent variant for chrome on theme backgrounds (dialogs, links): same hue, fixed OKLCH
+     lightness per theme so the texture-tuned accent stays visible in both light and dark. */
+  --accent-ui: oklch(from var(--accent) 0.78 C H);
+  --accent-ui-fg: oklch(from var(--accent) 0.13 0.02 H);
   --die: #edebe5;
   --pip: #191919;
   --tray-label: var(--accent);
@@ -15,10 +19,10 @@
   /* Ground shadow of the shaped dice. */
   --die-shadow: drop-shadow(.14rem .3rem .22rem #0006);
 }
-:root[data-theme="light"] { color-scheme: light; --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #edebe5; --tray-label: #855000; --tray-bg: #00000014; --danger: #c62828; }
+:root[data-theme="light"] { color-scheme: light; --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #edebe5; --tray-label: #855000; --tray-bg: #00000014; --danger: #c62828; --accent-ui: oklch(from var(--accent) 0.38 C H); --accent-ui-fg: oklch(from var(--accent) 0.96 0.02 H); }
 :root[data-theme="dark"] { color-scheme: dark; }
 @media (prefers-color-scheme: light) {
-  :root[data-theme="auto"] { --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #edebe5; --tray-label: #855000; --tray-bg: #00000014; --danger: #c62828; }
+  :root[data-theme="auto"] { --bg: #eef0f4; --card: #fff; --fg: #171a22; --muted: #5c6373; --border: #d3d8e2; --die: #edebe5; --tray-label: #855000; --tray-bg: #00000014; --danger: #c62828; --accent-ui: oklch(from var(--accent) 0.38 C H); --accent-ui-fg: oklch(from var(--accent) 0.96 0.02 H); }
 }
 /* Primary color (cup, selection, tray borders) follows the background; without a texture it stays orange.
    Trays: lighten dark textures, darken light ones – regardless of theme. */
@@ -98,7 +102,7 @@ header button:disabled { opacity: .5; cursor: default; }
 .rendered-die:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 #render-error { position: fixed; inset: 35% 1rem auto; z-index: 20; padding: 1rem; background: var(--card); border: 1px solid var(--danger); border-radius: 1rem; }
 #flick-debug { position: absolute; top: calc(max(.6rem, env(safe-area-inset-top)) + 4.1rem); left: max(1rem, env(safe-area-inset-left)); z-index: 2; max-width: calc(100% - 2rem); padding: .3rem .6rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--card); color: var(--fg); font-size: .8rem; pointer-events: none; }
-#flick-debug[data-triggered="true"] { border-color: var(--accent); font-weight: 700; }
+#flick-debug[data-triggered="true"] { border-color: var(--accent-ui); font-weight: 700; }
 #dice .die { width: var(--dice-size, 100%); }
 #dice .ghost { visibility: hidden; }
 /* Background: square textures for the whole app, cropped via cover in portrait and landscape.
@@ -141,7 +145,7 @@ header button:disabled { opacity: .5; cursor: default; }
 #dice.over { border-color: var(--accent); }
 .tray.over { border-style: dashed; }
 .choosing #dice { position: relative; border-color: var(--accent); }
-.choosing #dice::before { content: attr(data-label); position: absolute; top: .25rem; left: .5rem; z-index: 2; padding: 0 .25rem; background: var(--bg); color: var(--tray-label); font-size: .85rem; pointer-events: none; }
+.choosing #dice::before { content: attr(data-label); position: absolute; top: .25rem; left: .5rem; z-index: 2; padding: 0 .25rem; background: var(--bg); color: var(--accent-ui); font-size: .85rem; pointer-events: none; }
 .die.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 .die {
@@ -233,6 +237,7 @@ header button:disabled { opacity: .5; cursor: default; }
 .story-face { position: absolute; top: 14%; left: 16%; width: 68%; height: 68%; object-fit: contain; z-index: 1; pointer-events: none; }
 .die[data-shape="d4"] .num { transform: translateY(14%); }
 .die:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+dialog .die:focus-visible { outline-color: var(--accent-ui); }
 .die .num { font-size: min(2.7rem, calc(var(--dice-size, 8rem) * .4)); font-weight: 800; font-variant-numeric: tabular-nums; }
 .die small { position: absolute; bottom: var(--type-bottom, 5%); font-size: .7rem; opacity: .55; }
 .tray .die .num { font-size: 1.35rem; }
@@ -347,7 +352,7 @@ dialog button { display: flex; align-items: center; justify-content: center; gap
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
 #sound, #tilt, #shake, #surface, #language { grid-template-columns: repeat(2, 1fr); }
 .flag { font-size: 1.3rem; line-height: 1; }
-.grid button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
+.grid button[aria-pressed="true"] { background: var(--accent-ui); color: var(--accent-ui-fg); border-color: var(--accent-ui); font-weight: 700; }
 /* Table selection with preview: pre-generated 384 px thumbnails, not the full textures. */
 #surface button { flex-direction: column; gap: .4rem; padding: .4rem .4rem .5rem; }
 #surface .thumb { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: .5rem; background: var(--bg); border: 1px solid var(--border); }
@@ -361,13 +366,13 @@ dialog button.die { display: grid; appearance: none; min-height: 0; padding: 0; 
 /* Dice inside buttons: taps and scrolling belong to the button, not to a draggable die. */
 #bag .die { touch-action: manipulation; cursor: inherit; }
 dialog button.primary {
-  background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700;
+  background: var(--accent-ui); color: var(--accent-ui-fg); border-color: var(--accent-ui); font-weight: 700;
 }
 
 /* Quiet text action at the end of a heading. */
 dialog h3 .link {
   margin-left: auto; min-height: 2.25rem; padding: 0 .2rem;
-  background: none; border: 0; color: var(--tray-label); font-size: .95rem; font-weight: 600;
+  background: none; border: 0; color: var(--accent-ui); font-size: .95rem; font-weight: 600;
 }
 
 /* Dice bag. The table row stays on top, so every tap below shows its result there. */
@@ -419,14 +424,14 @@ dialog .die-types button { min-width: 0; min-height: 4.4rem; padding: .4rem; }
 .die-types .die { width: 2.9rem; }
 .die-types .die .num { font-size: 1.25rem; }
 .hint { color: var(--muted); font-size: .85rem; margin: 1.2rem 0 0; }
-.hint a { color: var(--accent); }
+.hint a { color: var(--accent-ui); }
 /* Settings hints that only apply to one view. */
 :root:not([data-view="3d"]) [data-view-only="3d"], [data-view="3d"] [data-view-only="2d"] { display: none; }
 #click-mode { width: 100%; margin-top: .6rem; }
 #bag .palette { gap: .55rem; }
 #bag .palette .die { flex: none; width: 2.75rem; }
 .palette .die[data-color^="skin-"] { background: var(--face) center / contain no-repeat; }
-.palette .die[aria-pressed="true"] { outline: 3px solid var(--tray-label); outline-offset: 2px; }
+.palette .die[aria-pressed="true"] { outline: 3px solid var(--accent-ui); outline-offset: 2px; }
 .palette .die[aria-pressed="true"]::after { content: "✓"; font-size: 1.6rem; font-weight: 700; }
 dialog button:disabled { opacity: .5; cursor: default; }
 
