@@ -34,7 +34,8 @@ the one we wanted for our own game nights:
   table are rerolled; totals count numeric dice only. Picture-only trays reserve no space for a sum.
 - **One dice screen:** pick a color, tap a die type to put it on the table, tap a die in the table row to put it
   back. Ready-made sets for Yahtzee, That's Pretty Clever, Clever³, roleplaying (D4–D20) and Stories · Classic
-  sit below, with at most six preview dice per row; save your own with one tap.
+  sit below, with at most six preview dice per row; save your own with one tap. With no dice at all, the Roll
+  button opens this screen.
 - **Stories · Classic:** nine picture dice with 54 local SVG motifs, inspired by the original story-cube
   grouping. Fixed light bodies and dark symbols in 2D and 3D; mix them with numeric dice and save your
   selection as an own set. No custom artwork/texture editor. [Mapping and source limits](STORY_CUBES.md).

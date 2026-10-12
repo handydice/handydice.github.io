@@ -562,6 +562,8 @@ async function doRoll(shaken = false) {
 // Roll on release, not only on click: after a long press the browser fires contextmenu and drops the
 // click. Only a press that started on the button counts, so dropping a dragged die here does not roll.
 // click is only for keyboard and screen readers: pointer clicks already rolled on release.
+// No dice at all: the button opens the dice bag instead, so an empty board is one tap from dice.
+const pressRoll = () => state.dice.length ? doRoll() : $('#bag-open').click();
 let rollPress = null;
 $('#roll').onpointerdown = e => {
   if (!e.isPrimary || e.button !== 0 || e.currentTarget.disabled) return;
@@ -571,10 +573,10 @@ $('#roll').onpointerdown = e => {
 $('#roll').onpointerup = e => {
   if (e.pointerId !== rollPress) return;
   rollPress = null;
-  doRoll();
+  pressRoll();
 };
 $('#roll').onlostpointercapture = $('#roll').onpointercancel = () => { rollPress = null; };
-$('#roll').onclick = e => { if (e.detail === 0) doRoll(); };
+$('#roll').onclick = e => { if (e.detail === 0) pressRoll(); };
 $('#roll').oncontextmenu = e => e.preventDefault();
 $('#reset').onclick = () => {
   if (rolling) return;
