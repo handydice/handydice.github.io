@@ -9,6 +9,15 @@
   "display": "standalone",
   "background_color": "#12141a",
   "theme_color": "#12141a",
+  "screenshots": [
+    { "src": "screenshots/hero.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Fünf Würfel auf dem Casino-Tisch" },
+    { "src": "screenshots/rpg.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Rollenspiel-Würfel von W4 bis W100" },
+    { "src": "screenshots/stories.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Bildwürfel mit Motiven" },
+    { "src": "screenshots/skins.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Zwölf bemalte W6-Motive" },
+    { "src": "screenshots/trays.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Würfel in Ablagen sammeln" },
+    { "src": "screenshots/dice.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Der Würfelbeutel: Würfel und Sets" },
+    { "src": "screenshots/settings.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Ton, Design und Tischfläche" }
+  ],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },

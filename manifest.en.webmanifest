@@ -9,6 +9,15 @@
   "display": "standalone",
   "background_color": "#12141a",
   "theme_color": "#12141a",
+  "screenshots": [
+    { "src": "screenshots/hero.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Five dice on the casino table" },
+    { "src": "screenshots/rpg.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Roleplaying dice from D4 to D100" },
+    { "src": "screenshots/stories.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Story dice with picture motifs" },
+    { "src": "screenshots/skins.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Twelve painted D6 skins" },
+    { "src": "screenshots/trays.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Collect dice in trays" },
+    { "src": "screenshots/dice.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "The dice bag: add dice and sets" },
+    { "src": "screenshots/settings.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Sound, theme and table surface" }
+  ],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },

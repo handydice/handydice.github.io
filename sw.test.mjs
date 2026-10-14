@@ -30,3 +30,11 @@ for (const m of readFileSync('index.html', 'utf8').matchAll(/(?:href|src)="([^"#
   if (/^(https?:)?\/\//.test(m[1])) continue;
   assert(cached.has(m[1]), `index.html loads ${m[1]}: missing from ASSETS`);
 }
+
+// Manifest icons are precached; install previews are fetched by the browser on demand and must
+// only exist on disk.
+for (const file of assets.filter(p => p.startsWith('manifest.') && p.endsWith('.webmanifest'))) {
+  const manifest = JSON.parse(readFileSync(file, 'utf8'));
+  for (const icon of manifest.icons) assert(existsSync(icon.src), `${file}: icon not found: ${icon.src}`);
+  for (const shot of manifest.screenshots ?? []) assert(existsSync(shot.src), `${file}: screenshot not found: ${shot.src}`);
+}
