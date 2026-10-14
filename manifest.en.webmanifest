@@ -1,5 +1,6 @@
 {
   "name": "HandyDice",
+  "id": "./",
   "short_name": "HandyDice",
   "description": "Free dice roller: D4–D100, offline, no ads, no trackers.",
   "lang": "en",

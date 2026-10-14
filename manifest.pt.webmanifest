@@ -1,5 +1,6 @@
 {
   "name": "HandyDice",
+  "id": "./",
   "short_name": "HandyDice",
   "description": "Rolador de dados grátis: D4–D100, offline, sem anúncios, sem rastreadores.",
   "lang": "pt-BR",

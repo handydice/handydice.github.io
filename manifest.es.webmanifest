@@ -1,5 +1,6 @@
 {
   "name": "HandyDice",
+  "id": "./",
   "short_name": "HandyDice",
   "description": "Lanzador de dados gratis: D4–D100, sin conexión, sin anuncios, sin rastreadores.",
   "lang": "es",

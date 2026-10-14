@@ -1,5 +1,6 @@
 {
   "name": "HandyDice",
+  "id": "./",
   "short_name": "HandyDice",
   "description": "Gratis dobbelsteen-app: D4–D100, offline, zonder advertenties, zonder trackers.",
   "lang": "nl",

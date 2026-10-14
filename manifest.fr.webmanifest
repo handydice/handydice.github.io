@@ -1,5 +1,6 @@
 {
   "name": "HandyDice",
+  "id": "./",
   "short_name": "HandyDice",
   "description": "Lanceur de dés gratuit : D4–D100, hors ligne, sans pub ni traqueurs.",
   "lang": "fr",

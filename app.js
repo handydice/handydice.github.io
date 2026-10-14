@@ -775,6 +775,8 @@ function setTheme(theme) {
 }
 onPick($('#theme'), 'theme', setTheme);
 setTheme(document.documentElement.dataset.theme);
+// Auto follows the system while the app is open: repaint the browser/PWA bar (theme-color) too.
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => setTheme(document.documentElement.dataset.theme));
 // Switching the view keeps the round as it is; only the presentation changes. Not during a roll.
 onPick($('#view'), 'view', view => {
   if (rolling || view === state.view) return;

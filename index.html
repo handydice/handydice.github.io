@@ -20,7 +20,20 @@ document.documentElement.dataset.theme = localStorage.getItem('handydice-theme')
 try { document.documentElement.dataset.surface = JSON.parse(localStorage.getItem('handydice-state')).surface || ''; } catch {}
 // Load updates even when a stale module cache keeps the app from starting.
 if ('serviceWorker' in navigator) {
-  if (navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+  if (navigator.serviceWorker.controller) {
+    // A new version took over: reload to switch to it, but never under the user's hand.
+    // A roll or an open dialog wins for up to 30s, then the update applies anyway.
+    let waited = 0;
+    const apply = () => {
+      if (waited < 30000 && (document.body?.classList.contains('rolling') || document.querySelector('dialog[open]'))) {
+        waited += 500;
+        setTimeout(apply, 500);
+        return;
+      }
+      location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', apply, { once: true });
+  }
   navigator.serviceWorker.register('sw.js');
 }
 </script>
