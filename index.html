@@ -13,171 +13,40 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HandyDice">
+<link rel="stylesheet" href="style.css">
 <script>
-// Classic script so the theme applies before first paint; the key is THEME_KEY in state.js.
-document.documentElement.dataset.theme = localStorage.getItem('handydice-theme') || 'auto';
-// Surface too, so the texture starts loading with the CSS instead of after the modules (STATE_KEY).
-try { document.documentElement.dataset.surface = JSON.parse(localStorage.getItem('handydice-state')).surface || ''; } catch {}
-// Load updates even when a stale module cache keeps the app from starting.
+try {
+  document.documentElement.dataset.theme = localStorage.getItem('handydice-theme') || 'auto';
+  document.documentElement.dataset.surface = JSON.parse(localStorage.getItem('handydice-state'))?.surface || '';
+} catch {}
 if ('serviceWorker' in navigator) {
   if (navigator.serviceWorker.controller) {
-    // A new version took over: reload to switch to it, but never under the user's hand.
-    // A roll or an open dialog wins for up to 30s, then the update applies anyway.
     let waited = 0;
     const apply = () => {
       if (waited < 30000 && (document.body?.classList.contains('rolling') || document.querySelector('dialog[open]'))) {
         waited += 500;
         setTimeout(apply, 500);
-        return;
-      }
-      location.reload();
+      } else location.reload();
     };
     navigator.serviceWorker.addEventListener('controllerchange', apply, { once: true });
   }
-  navigator.serviceWorker.register('sw.js');
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(console.warn));
 }
 </script>
-<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
-  <header>
-    <button id="bag-open" aria-haspopup="dialog"><i class="ico d6" aria-hidden="true"></i>Dice</button>
-    <button id="open" aria-haspopup="dialog" aria-label="Settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    </button>
-  </header>
-  <section id="dice" data-tray="" aria-label="Dice" aria-live="polite"></section>
-  <div id="controls">
-    <div id="trayarea">
-      <div class="trays" id="toptrays">
-        <section class="tray" data-tray="t1" aria-label="Top tray">
-          <div class="tray-dice"></div>
-          <output class="tray-total" aria-label="Top tray total" hidden></output>
-        </section>
-      </div>
-      <div class="trays" id="bottomtrays">
-        <div id="total"></div>
-        <section class="tray" data-tray="b1" aria-label="Bottom tray">
-          <div class="tray-dice"></div>
-          <output class="tray-total" aria-label="Bottom tray total" hidden></output>
-        </section>
-      </div>
-    </div>
-    <div id="actions">
-      <button id="reset" hidden>↺ Return</button>
-      <button id="roll"><i class="ico cup" aria-hidden="true"></i><span id="roll-label">Roll</span></button>
-    </div>
-  </div>
-</main>
-
-<dialog id="bag" class="screen" aria-labelledby="bag-title">
-  <div>
-    <div class="bag-top">
-      <div class="head">
-        <form method="dialog"><button class="back" aria-label="Back">←</button></form>
-        <h2 id="bag-title">Dice</h2>
-      </div>
-      <h3><span>On the table</span> <small id="table-count"></small><button id="clear" class="link" type="button">Clear</button></h3>
-      <div id="table-dice" class="minis"></div>
-      <p id="table-empty" class="hint">Tap a die below to put it on the table.</p>
-    </div>
-    <h3>Add</h3>
-    <div class="palette scroller" role="group" aria-label="Color"></div>
-    <div class="die-types" role="group" aria-label="Add"></div>
-    <h3><span>Sets</span><button id="edit-sets" class="link" type="button" aria-pressed="false" hidden>Edit</button></h3>
-    <div id="sets" class="scroller"></div>
-    <form id="save-set" class="line" hidden>
-      <input id="set-name" maxlength="40" autocomplete="off" aria-label="Save current dice">
-      <button class="primary">Save</button>
-    </form>
-  </div>
-</dialog>
-
-<dialog id="settings" class="screen">
-  <div>
-    <div class="head">
-      <form method="dialog"><button class="back" aria-label="Back">←</button></form>
-      <h2>Settings</h2>
-    </div>
-
-    <h3>Sound</h3>
-    <div class="grid" id="sound">
-      <button data-sound="on"><i class="ico volume" aria-hidden="true"></i>On</button>
-      <button data-sound="off"><i class="ico volume-off" aria-hidden="true"></i>Off</button>
-    </div>
-
-    <h3>Appearance</h3>
-    <div class="grid" id="theme">
-      <button data-theme="auto">Auto</button>
-      <button data-theme="light">Light</button>
-      <button data-theme="dark">Dark</button>
-    </div>
-
-    <h3>Table</h3>
-    <div class="grid" id="surface">
-      <button data-surface=""><span class="thumb"></span>None</button>
-      <button data-surface="casino"><img class="thumb" src="backgrounds/thumbs/casino.webp" alt="" loading="lazy">Casino</button>
-      <button data-surface="oak"><img class="thumb" src="backgrounds/thumbs/oak.webp" alt="" loading="lazy">Oak</button>
-      <button data-surface="crafts"><img class="thumb" src="backgrounds/thumbs/crafts.webp" alt="" loading="lazy">Crafts</button>
-      <button data-surface="bluewood"><img class="thumb" src="backgrounds/thumbs/bluewood.webp" alt="" loading="lazy">Blue wood</button>
-      <button data-surface="terracotta"><img class="thumb" src="backgrounds/thumbs/terracotta.webp" alt="" loading="lazy">Terracotta</button>
-    </div>
-
-    <h3>Language</h3>
-    <div class="grid" id="language">
-      <button data-language="auto"><span class="flag" aria-hidden="true">🌐</span>Auto</button>
-      <button data-language="en" lang="en"><span class="flag" aria-hidden="true">🇬🇧</span>English</button>
-      <button data-language="de" lang="de"><span class="flag" aria-hidden="true">🇩🇪</span>Deutsch</button>
-      <button data-language="fr" lang="fr"><span class="flag" aria-hidden="true">🇫🇷</span>Français</button>
-      <button data-language="es" lang="es"><span class="flag" aria-hidden="true">🇪🇸</span>Español</button>
-      <button data-language="pt" lang="pt-BR"><span class="flag" aria-hidden="true">🇧🇷</span>Português</button>
-      <button data-language="it" lang="it"><span class="flag" aria-hidden="true">🇮🇹</span>Italiano</button>
-      <button data-language="nl" lang="nl"><span class="flag" aria-hidden="true">🇳🇱</span>Nederlands</button>
-      <button data-language="pl" lang="pl"><span class="flag" aria-hidden="true">🇵🇱</span>Polski</button>
-    </div>
-
-    <h3>Dice display</h3>
-    <div class="grid" id="view">
-      <button data-view="2d">2D</button>
-      <button data-view="3d">3D</button>
-    </div>
-    <p class="hint">2D: lightweight, ideal for older devices. 3D: physical dice, requires WebGL2.</p>
-    <p class="hint">Landscape: dice on the left, trays and cup on the right. Rotating keeps your round intact. Full trays can be scrolled.</p>
-
-    <h3 data-view-only="3d">Table tilt</h3>
-    <div class="grid" id="tilt" data-view-only="3d">
-      <button data-tilt="on">On</button>
-      <button data-tilt="off">Off</button>
-    </div>
-    <p class="hint" data-view-only="3d">Tilt your phone to move table dice. Off keeps the table level.</p>
-
-    <h3 data-view-only="2d">Shake to roll</h3>
-    <div class="grid" id="shake" data-view-only="2d">
-      <button data-shake="on">On</button>
-      <button data-shake="off">Off</button>
-    </div>
-    <p class="hint" data-view-only="2d">Shake your phone to roll dice. Off needs no motion sensor access.</p>
-
-    <h3>Accessibility</h3>
-    <p class="hint">Tap to move dice to the last used tray, initially the bottom tray. Tap again to return them. Drag to choose the top or bottom tray.</p>
-    <label for="click-mode">When tapping a die</label>
-    <select id="click-mode">
-      <option value="direct">Move / return immediately</option>
-      <option value="select">Select, then tap the destination</option>
-    </select>
-    <p class="hint">Two taps: select a die, then tap the top tray, bottom tray or table. Tap a tray die to insert before it. Tap the selected die again or press Esc to cancel. Drag &amp; drop remains available in both modes.</p>
-    <p class="hint" data-view-only="3d">3D: drag gently to move, flick to throw. Fast spins randomize the numbers. Enable table tilt in Settings to move dice by tilting your phone. Shift-drag or use a second finger to rotate.</p>
-    <p class="hint" id="drag-help">Keyboard: Enter or Space to pick up, ↑ for top, ↓ for bottom, ← for the table. Enter to drop, Esc to cancel.</p>
-    <p class="hint" id="rotate-help" data-view-only="3d">Shift + arrow keys rotate picked-up dice.</p>
-
-    <button id="install" class="wide" hidden>Install app</button>
-    <p class="hint">Works offline · no trackers · no sign-up.<br>Language: Auto follows your browser. A manual choice is saved on this device.<br>Install: Android: “Install app” (appears when Chrome offers it); iOS: Share → “Add to Home Screen”.</p>
-
-    <h3>License</h3>
-    <p class="hint">MIT license. The source code is on GitHub. <a href="https://github.com/handydice/handydice.github.io" target="_blank" rel="noreferrer">View source code</a></p>
-  </div>
-</dialog>
-<script type="module" src="app.js"></script>
+<div id="main"></div>
+<noscript>HandyDice requires JavaScript and WebAssembly.</noscript>
+<script type="module">
+import init from './pkg/handydice.js';
+try { await init(); }
+catch (error) {
+  console.error(error);
+  const message = document.createElement('p');
+  message.setAttribute('role', 'alert');
+  message.textContent = 'HandyDice could not start. Reload the app and try again. ' + error.message;
+  document.getElementById('main').replaceChildren(message);
+}
+</script>
 </body>
 </html>

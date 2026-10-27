@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "build": "node build-web.mjs",
+    "dev": "node build-web.mjs --dev && python3 -m http.server 8766 --bind 127.0.0.1 --directory dist",
+    "test": "cargo test --lib"
   }
 }

@@ -32,6 +32,7 @@
 :root[data-surface="bluewood"] { --accent: #6c9fc5; --accent-fg: #0b1b28; --tray-label: var(--accent); --tray-bg: #00000018; --chrome-bg: #ffffff1a; --chrome-fg: #fff; --chrome-border: #ffffff33; }
 :root[data-surface="terracotta"] { --accent: #9c3d10; --accent-fg: #ffecd9; --tray-label: var(--accent); --tray-bg: #00000018; --chrome-bg: #ffffff59; --chrome-fg: #4a2410; --chrome-border: #0000001a; }
 * { box-sizing: border-box; }
+#main { display: contents; }
 [hidden] { display: none !important; }
 /* No double-tap zoom while interacting; scrolling and pinch zoom remain possible. */
 html, body, dialog { touch-action: manipulation; }
@@ -51,7 +52,7 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
-/* Hidden until app.js has translated and rendered, so the UI appears in one step. */
+/* Hidden until the interface is localized and rendered, so it appears in one step. */
 html:not(.ready) main { visibility: hidden; }
 main {
   --surface-gap: .6rem;

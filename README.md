@@ -25,7 +25,7 @@ the one we wanted for our own game nights:
   sampling and uniformly randomized 3D face numbering. Shake-to-roll is available in 2D.
 - **Nothing to install.** It's a web app: one link for iPhone, Android and desktop. Installing to the home screen
   is optional and takes two taps.
-- **No dependencies.** Plain JavaScript and CSS, no framework and no build step.
+- **Rust and WebAssembly.** Dioxus handles the interface; wgpu renders hardware-accelerated 3D dice.
 
 ## What it does
 
@@ -57,9 +57,9 @@ the one we wanted for our own game nights:
 
 ## 2D and 3D
 
-Settings → **Dice display** switches between the original 2D view and physical 3D dice. 2D never
-initializes WebGL; switching back to it stops the simulation and releases the 3D graphics resources.
-3D requires WebGL2. Both views share dice, trays, colors, sets and other settings.
+Settings → **Dice display** switches between 2D and physical 3D dice. 2D does not initialize a
+GPU context; switching back to it stops the simulation and releases 3D resources. 3D uses WebGPU
+where available, with a WebGL2 fallback. Both views share dice, trays, colors, sets and settings.
 3D uses the available screen width on tablets and desktop. Larger tables add physical rolling
 space rather than magnifying dice; portrait phones and the compact 2D layout stay unchanged.
 Roll-button throws start in rows around the table center rather than near the bottom edge.
@@ -80,7 +80,7 @@ release drops the die without a flick impulse. Shift-drag, a second finger, or S
 rotate a picked-up die explicitly. Light throws retain the existing numbering and land according
 to physics. A free thrown die receives fresh cryptographic numbering once its tumbling speed
 reaches 16 radians/s (about 2.5 revolutions/s); yaw alone does not trigger this.
-`MOVE_SPEED`, `FLICK_SPEED`, `MAX_FLICK_SPIN` and `RANDOMIZE_SPIN` in `scene3d.js` are calibration values.
+`MOVE_SPEED`, `FLICK_SPEED`, `MAX_FLICK_SPIN` and `RANDOMIZE_SPIN` in `src/physics.rs` are calibration values.
 With `?debug` in the URL, a small **Last flick · D… · Crypto: YES/NO** badge after a table release shows whether
 that die actually received fresh cryptographic numbering. It starts at **NO** and changes to
 **YES** only when renumbering runs, even if the resulting visible number stays the same.
@@ -122,17 +122,17 @@ directly with the same unbiased cryptographic generator.
 
 ## Development
 
-Any static file server works:
+Install Rust with the `wasm32-unknown-unknown` target, [wasm-pack](https://rustwasm.github.io/wasm-pack/),
+Node.js and Python 3. Build the optimized web app and serve the generated directory:
 
 ```sh
-python3 -m http.server 8000
+node build-web.mjs
+python3 -m http.server 8000 --directory dist
 ```
 
-Then open http://localhost:8000. The service worker needs `localhost` or HTTPS.
-
-```sh
-npm test   # = node --test, runs every *.test.mjs
-```
+Open http://localhost:8000. The service worker needs `localhost` or HTTPS. For a faster
+development build use `npm run dev`; run the Rust geometry, physics and state checks with `cargo test --lib`.
+Add `?gpu=webgl` to force the WebGL2 fallback for testing; without it WebGPU is preferred.
 
 Touch smoke check: tap the Roll button, then hold it for 1–3 seconds and release. Each action must roll
 exactly once (one cup animation in 2D, one throw in 3D). Enter and Space must still roll; a canceled touch or
@@ -141,23 +141,16 @@ reduced-motion 3D roll; keyboard and screen-reader clicks must still roll.
 
 | File | Responsibility |
 | --- | --- |
-| `index.html` | Markup in English (source language), inline theme script to avoid a flash |
-| `app.js` | UI wiring: rendering, tap/drag/keyboard input, roll animation, dialogs, settings, shake |
-| `dice.js` | Pure dice rules: unbiased rolls, trays, table slots |
-| `story.js` | Nine fixed picture-die groups, local SVG paths and accessible motif labels |
-| `dice3d.js` | Rounded polyhedral geometry, face labels and physical face reading |
-| `physics3d.js` | Gravity, rigid-body contacts, pickup and sleeping |
-| `renderer3d.js` | Native WebGL2 dice, mapped labels, skins, overlapping shadows and exact picking |
-| `scene3d.js` | On-demand simulation, value-preserving trays, free-space returns and GPU lifetime |
-| `state.js` | Load and validate saved state; storage keys |
-| `i18n.js` | Language choice, translations, DOM localization |
-| `layout.js` | Largest dice size that fits the table |
-| `sound.js` | Preloaded Web Audio effects; speed-dependent 3D contact sounds |
-| `viewport.js` | App height, including the iOS PWA full-screen workaround |
-| `sw.js` | Service worker: network first, precached offline fallback |
+| `src/ui.rs` | Dioxus interface, dialogs, controls and localization |
+| `src/model.rs` | Dice rules, saved rounds and sets, story motifs and translation lookup |
+| `src/geometry.rs` | Rounded polyhedral geometry and face numbering |
+| `src/physics.rs` | Gravity, rigid-body contacts, throws, pickup and sleeping |
+| `src/gpu.rs`, `src/dice.wgsl` | WebGPU/WebGL2 rendering, materials, shadows and picking |
+| `src/platform.rs` | Browser interaction, animation loop, storage and viewport |
+| `src/device.rs` | Web Audio, shake and tilt sensors |
+| `build-web.mjs`, `sw.js` | Web build and content-versioned offline cache |
 
-Dice rules, geometry, physics, tray transitions, saved state, 2D layout and language choice are tested
-with `node:assert`, including story identities in saved rounds/sets and mixed numeric totals. Browser smoke:
+Dice rules, geometry, physics, tray transitions and saved state are tested in Rust. Browser smoke:
 switch 2D → 3D → 2D without changing the round; rotate a picked-up die and store it without changing
 its value; return several tray dice without overlap; reload and switch views offline. Also check
 both empty-tray extensions, value-preserving hand tilt, gentle drops, medium and strong plain flicks,
@@ -184,16 +177,16 @@ cap of 2. Physics substeps, contacts and face randomization are unchanged; shado
 High-DPI smoke check: compare `document.querySelector('#dice-canvas').width` before, during and after
 a nine-die throw. The moving width must decrease and the resting width must return; repeat with a
 lifted tray die and after WebGL context restore. Check that symbols remain readable while moving.
-The caps are `DPR_MOVING` / `DPR_MAX` in `renderer3d.js`; tune using GPU frame timings on real phones,
-not desktop CPU timings or reduced-motion emulation.
+The caps are in `src/platform.rs`; tune using GPU frame timings on real phones, not desktop CPU
+timings or reduced-motion emulation.
 
-New language: add its code to `LANGUAGES`, a table to `translations` in `i18n.js`, a
-`manifest.<code>.webmanifest`, and a button in `#language` (`index.html`).
+New language: add its code and name in `src/model.rs` and `src/ui.rs`, its translations in
+`src/translations.json`, and a `manifest.<code>.webmanifest`.
 
 ### Release
 
-1. Bump `CACHE` in `sw.js`; add new runtime files to `ASSETS`, then verify an offline reload in the browser.
-2. Push to `main`: GitHub Actions runs the tests and publishes to GitHub Pages (`.github/workflows/pages.yml`).
+1. Run `cargo test --lib` and `node build-web.mjs`, then verify an offline reload in the browser.
+2. Push to `main`: GitHub Actions builds and publishes `dist/` to GitHub Pages.
 
 ## License
 

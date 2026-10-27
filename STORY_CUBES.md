@@ -32,7 +32,7 @@ W2 „L“ ist laut Forum Post #9 ein Fahrschülerschild, kein Briefkasten. W6 �
 
 ## 2. Motiv → Ersatzgrafik
 
-✅ motivisch brauchbarer Kandidat, keine Originalkopie; ≈ Näherung; ⊕ Komposit; ✗ kein geeigneter Einzelkandidat. Die Tabelle dokumentiert die Recherchekandidaten. Die tatsächlich verwendeten 38 Lucide-Motive und 16 eigenen SVGs sind in `story.js` vermerkt. Die Reihenfolge dieser Tabelle folgt den Fotoansichten, nicht den Sammler-Seitennummern.
+✅ motivisch brauchbarer Kandidat, keine Originalkopie; ≈ Näherung; ⊕ Komposit; ✗ kein geeigneter Einzelkandidat. Die Tabelle dokumentiert die Recherchekandidaten. Die tatsächlich verwendeten 38 Lucide-Motive und 16 eigenen SVGs sind in `src/model.rs` vermerkt. Die Reihenfolge dieser Tabelle folgt den Fotoansichten, nicht den Sammler-Seitennummern.
 
 Kandidaten anhand der Primär-Repositories geprüft und als Kontaktbogen gesichtet. Gepinnte Quellen: [Lucide 70562c1e](https://github.com/lucide-icons/lucide/tree/70562c1ee1c4fdcf736fe97bc893fb8511927934/icons), [Game-icons 82d94881](https://github.com/game-icons/icons/tree/82d948812bfe3f269ef8f731dcdb07b08160edc4). Motivquelle bleibt der Foto-/Forumabgleich.
 
@@ -104,7 +104,7 @@ Kandidaten anhand der Primär-Repositories geprüft und als Kontaktbogen gesicht
 
 ## 3. Performance: SVG vs. Raster und Pixel-Art
 
-`renderer3d.js:buildAtlas()` baut einen Canvas-Atlas. `image()` cached decodierte Bilder, `atlas()` GPU-Texturen in begrenztem LRU. `upload()` lädt Canvas mit `SRGB8_ALPHA8` und erzeugt Mipmaps. [Canvas drawImage](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage) zeichnet SVG-Bildquellen; [WebGL texImage2D](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texImage2D) übernimmt den Canvas.
+`src/gpu.rs` baut einen Canvas-Atlas, cached decodierte Bilder und GPU-Texturen in begrenztem LRU und lädt Texturen samt Mipmaps. [Canvas drawImage](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage) zeichnet SVG-Bildquellen; wgpu überträgt den Canvas an WebGPU oder WebGL2.
 
 | Aspekt | SVG | PNG / WebP |
 |---|---|---|
@@ -116,7 +116,7 @@ Kandidaten anhand der Primär-Repositories geprüft und als Kontaktbogen gesicht
 
 **Cache und Atlas-Auflösung sind wichtiger als die Dateiendung.** D6-Atlas aktuell 2048×256 Pixel: RGBA8 rechnerisch 2 MiB Basisdaten, mit Mipmaps etwa 2,67 MiB. Neun getrennte Story-Würfelatlanten: etwa **24 MiB GPU-Texturdaten**. LRU erlaubt 16 Atlanten, bei dieser Größe etwa 42,7 MiB. Decodierte Bilder, Canvas-Zwischenspeicher, Treiber-Overhead und weitere Ressourcen nicht enthalten. Berechnung, keine Speichermessung; für SVG und PNG gleich.
 
-`scene3d.js:renumber()` randomisiert vor jedem Wurf die geometrische Seitenzuordnung. Cache-Key enthält die Permutation. Story-Würfel behalten ihre sechs Motive **je individuellem Würfel**, keine Auswahl aus einem gemeinsamen 54er-Pool. Nicht für vermeintlich festen Cache die Fairness-Randomisierung abschalten. Würfel-ID zusätzlich in Cache-Key, sonst würden alle neun D6 dieselben Motive erhalten.
+`src/physics.rs` randomisiert vor jedem Wurf die geometrische Seitenzuordnung. Cache-Key enthält die Permutation. Story-Würfel behalten ihre sechs Motive **je individuellem Würfel**, keine Auswahl aus einem gemeinsamen 54er-Pool. Nicht für vermeintlich festen Cache die Fairness-Randomisierung abschalten. Würfel-ID zusätzlich in Cache-Key, sonst würden alle neun D6 dieselben Motive erhalten.
 
 Erste Implementierung: Bilder pro URL einmal decodieren, alle sechs vor fertigem Atlasaufbau bereitstellen, vorhandenen Atlas-LRU nutzen. Keine neuen Bildobjekte/Uploads in normalen Animationsframes. Neue Permutation/Darstellung oder Context-Restore können neuen Atlas erfordern. Unveränderlicher Atlas mit separater UV-Permutation ist eine größere Rendereränderung, nur bei nachgewiesenem Engpass.
 
@@ -143,7 +143,7 @@ PNG/WebP kann glatte Illustrationen oder Pixel-Art enthalten. Pixel-Art braucht 
 
 ## 4. Implementierung und Verifikation
 
-- `story.js`: neun feste Gruppen `classic-1`–`classic-9` in Sammler-Reihenfolge, 54 lokale SVG-Pfade mit Namen für alle acht App-Sprachen. 38 Lucide-Motive, 16 eigenständig gezeichnete Ergänzungen; vollständige Lucide-/Feather-Lizenz im Assetordner.
+- `src/model.rs`: neun feste Gruppen `classic-1`–`classic-9` in Sammler-Reihenfolge, 54 lokale SVG-Pfade mit Namen für alle acht App-Sprachen. 38 Lucide-Motive, 16 eigenständig gezeichnete Ergänzungen; vollständige Lucide-/Feather-Lizenz im Assetordner.
 - W5 zeigt bewusst ein neutrales drehendes Objekt, ohne eine unsichere Brunnen-/Münzdeutung zu behaupten. Karte als Nachrichtenkarte mit Personenkästchen, Käfer als generisches Insekt. Räumliche Seitenpositionen sind unsere eigenen.
 - Zustand: `story` ist eine validierte D6-ID, `value` bleibt interner Seitenindex 1–6. Eigene Sets speichern pro Würfel die IDs in `stories`; unbekannte IDs/URLs und Story-IDs auf anderen Würfelformen werden nicht übernommen.
 - UI: Set über die vorhandene Set-Auswahl, feste helle Körper und dunkle Motive. Gemischte eigene Sets bleiben möglich. Motivnamen in barrierefreien Labels; Summen zählen ausschließlich Zahlenwürfel. Kein neuer Würfel-/Textur-Editor.
