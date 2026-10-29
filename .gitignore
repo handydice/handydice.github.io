@@ -1,1 +1,5 @@
 .DS_Store
+promo/
+/target/
+/dist/
+node_modules/

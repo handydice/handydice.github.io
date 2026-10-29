@@ -5,6 +5,7 @@ import { STATE_KEY, THEME_KEY, loadState, saveState } from './state.js';
 import { loadSounds, playImpact, playSound, resumeSounds } from './sound.js';
 import { watchViewport } from './viewport.js';
 import { STORY_DICE, isStory, storyFace } from './story.js';
+import './install.js';
 
 localize(document);
 
@@ -841,23 +842,6 @@ onPick($('#language'), 'language', language => {
   localStorage.setItem(LANGUAGE_KEY, language);
   location.reload(); // rebuild all dynamic texts and install metadata in the same language
 });
-
-// Install: Chrome on Android offers the app by itself; the button brings the offer back on request.
-// iOS has no beforeinstallprompt and stays with the share menu.
-let installEvt = null;
-addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  installEvt = e;
-  $('#install').hidden = false;
-});
-$('#install').onclick = async () => {
-  if (!installEvt) return;
-  installEvt.prompt();
-  await installEvt.userChoice;
-  installEvt = null;
-  $('#install').hidden = true;
-};
-addEventListener('appinstalled', () => { $('#install').hidden = true; });
 
 // 2D shake to roll. In 3D the orientation sensor only tilts the physical table.
 // Calibration (m/s², including gravity ≈ 9.8): START = jolt to begin, KEEP = still shaking, STILL_MS = rest before the throw.

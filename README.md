@@ -61,9 +61,18 @@ Settings → **Dice display** switches between the original 2D view and physical
 initializes WebGL; switching back to it stops the simulation and releases the 3D graphics resources.
 3D requires WebGL2. Both views share dice, trays, colors, sets and other settings.
 3D uses the available screen width on tablets and desktop. Larger tables add physical rolling
-space rather than magnifying dice; portrait phones and the compact 2D layout stay unchanged.
+space rather than magnifying dice; the compact 2D layout stays unchanged.
 Roll-button throws start in rows around the table center rather than near the bottom edge.
-Dice still settle through physics; no positions are adjusted after landing.
+New dice and tray returns use free table positions. If no candidate is clear, table dice are spaced
+in rows; crowded tables gain enough physical room to keep even twelve D100s apart.
+Removing dice does not shrink that room and squeeze the remaining dice together.
+Dice settle through physics, not by snapping their position or orientation after landing.
+A sleeping die that leans on an edge or another die gets an upward/sideways impulse and tumbles
+again, keeping its existing face numbering. Results are committed only once every free die lies flat.
+After eight seconds without settling, moving dice get the same corrective toss with table tilt
+temporarily ignored until they land. Held dice are never corrected.
+`MAX_SETTLE_TIME`, `NUDGE_SPEED` and `FACE_UP` in `scene3d.js` tune the recovery delay, upward speed
+and face-alignment tolerance.
 
 With sound on, 3D plays a short table or die-on-die sample for each physical impact instead of a
 recorded roll. Loudness follows the closing speed cubed, so dice dropped from the hand stay quiet and
@@ -111,14 +120,32 @@ the first user gesture. Requests are reused within the page, avoiding duplicate 
 The Roll button assigns fresh cryptographic numbering **before** each 3D throw.
 Opposite-number pairs are shuffled and independently flipped, making every physical face uniform
 over all numbers even if the geometry or simulation favors some faces. Opposite sums remain correct;
-D4 corner labels follow the mapping too. Nothing changes the result after landing. 2D draws values
+D4 corner labels follow the mapping too. Once a die has landed flat, its result is not changed. 2D draws values
 directly with the same unbiased cryptographic generator.
 
 ## Install
 
-- **iPhone / iPad:** open the link in Safari → Share → *Add to Home Screen*.
-- **Android:** open the link in Chrome → *Install app* (in the settings screen or the browser menu).
+- **iPhone / iPad:** open the link in Safari → Share → *Add to Home Screen* → *Add*. Enable
+  *Open as Web App* if offered. The first item in Settings explains these steps.
+- **Android:** *Install app* is the first item in Settings when Chrome offers installation;
+  otherwise use the browser menu.
 - **Desktop:** Chrome and Edge show an install icon in the address bar. Or just keep the tab.
+
+The browser shows a small, dismissible install action in the header once installation is available
+(on iOS, the action opens instructions). It never opens a dialog automatically, covers the table
+or moves the Roll button. Showing the hint is remembered, so ignoring it, dismissing it or reloading
+does not cause another automatic offer. Installation stays available at the top of Settings.
+
+Install controls are hidden in standalone mode, including iOS's `navigator.standalone`.
+Recognized installation is remembered in this browser's storage. On supported Android browsers,
+`getInstalledRelatedApps()` also checks for an existing PWA before any hint is shown; each language
+manifest declares its own related web app. Safari has no equivalent query: a separate Safari tab
+cannot reliably discover an existing Home Screen installation, and iOS app/browser storage may be
+separate. Therefore, suppression inside the installed app is reliable, but universal detection from
+a separate iOS browser tab is not possible.
+
+`handydice-install-seen` remembers the hint and `handydice-installed` remembers installation.
+Clearing browser storage resets these flags; uninstalling the app is not itself detectable.
 
 ## Development
 
@@ -139,10 +166,17 @@ exactly once (one cup animation in 2D, one throw in 3D). Enter and Space must st
 dropping a die onto the Roll button must not. Pointer clicks must not roll again after an immediate
 reduced-motion 3D roll; keyboard and screen-reader clicks must still roll.
 
+Installation smoke: check a fresh Android browser offer and iPhone/iPad instructions, dismissal,
+reload and the first Settings item. The native prompt must run only after a tap; installed/standalone
+launches must show no installation controls. Test Android's existing-install query, cross-tab
+installation, narrow portrait/landscape layouts and an offline reload. Native installation and
+Safari's Home Screen behavior need real devices; browser emulation covers the UI/state paths only.
+
 | File | Responsibility |
 | --- | --- |
 | `index.html` | Markup in English (source language), inline theme script to avoid a flash |
 | `app.js` | UI wiring: rendering, tap/drag/keyboard input, roll animation, dialogs, settings, shake |
+| `install.js` | Once-only install promotion, native install offers, iOS instructions and installed-state suppression |
 | `dice.js` | Pure dice rules: unbiased rolls, trays, table slots |
 | `story.js` | Nine fixed picture-die groups, local SVG paths and accessible motif labels |
 | `dice3d.js` | Rounded polyhedral geometry, face labels and physical face reading |
@@ -163,6 +197,9 @@ its value; return several tray dice without overlap; reload and switch views off
 both empty-tray extensions, value-preserving hand tilt, gentle drops, medium and strong plain flicks,
 and tilt with a locked tray die. Slow-to-fast gestures must have a gradual transition without
 an upward pickup-motor launch or a release snap.
+Also add twelve mixed dice and twelve D100s incrementally through the dice dialog: none may overlap.
+Remove dice again without squeezing the remaining dice together. A cocked sleeping die must get a
+physical toss, land flat and commit a visible result without teleporting or renumbering its faces.
 For 3D pointer gestures, check that a quick flick shows no tray hints, a held drag shows them after
 200 ms, and releasing or cancelling clears them without a delayed flash. Landscape tray dice must
 be visibly larger than before, with full trays still scrollable. The Crypto badge stays hidden unless

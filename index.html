@@ -43,6 +43,10 @@ if ('serviceWorker' in navigator) {
 <main>
   <header>
     <button id="bag-open" aria-haspopup="dialog"><i class="ico d6" aria-hidden="true"></i>Dice</button>
+    <div id="install-notice" role="group" aria-label="Install app" hidden>
+      <button id="install-shortcut">Install app</button>
+      <button id="install-dismiss" aria-label="Dismiss installation hint">×</button>
+    </div>
     <button id="open" aria-haspopup="dialog" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -100,6 +104,11 @@ if ('serviceWorker' in navigator) {
       <form method="dialog"><button class="back" aria-label="Back">←</button></form>
       <h2>Settings</h2>
     </div>
+    <section id="install-settings" hidden>
+      <button id="install" class="wide primary" hidden>Install app</button>
+      <p id="install-ios" class="hint" tabindex="-1" hidden>Open this page in Safari. Tap Share → Add to Home Screen → Add. Enable Open as Web App if offered.</p>
+      <p id="install-manual" class="hint" hidden>In your browser menu, choose Install app or Add to Home Screen, if available.</p>
+    </section>
 
     <h3>Sound</h3>
     <div class="grid" id="sound">
@@ -171,8 +180,7 @@ if ('serviceWorker' in navigator) {
     <p class="hint" id="drag-help">Keyboard: Enter or Space to pick up, ↑ for top, ↓ for bottom, ← for the table. Enter to drop, Esc to cancel.</p>
     <p class="hint" id="rotate-help" data-view-only="3d">Shift + arrow keys rotate picked-up dice.</p>
 
-    <button id="install" class="wide" hidden>Install app</button>
-    <p class="hint">Works offline · no trackers · no sign-up.<br>Language: Auto follows your browser. A manual choice is saved on this device.<br>Install: Android: “Install app” (appears when Chrome offers it); iOS: Share → “Add to Home Screen”.</p>
+    <p class="hint">Works offline · no trackers · no sign-up.<br>Language: Auto follows your browser. A manual choice is saved on this device.</p>
 
     <h3>License</h3>
     <p class="hint">MIT license. The source code is on GitHub. <a href="https://github.com/handydice/handydice.github.io" target="_blank" rel="noreferrer">View source code</a></p>

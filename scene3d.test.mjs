@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { buildDie, readValue } from './dice3d.js';
-import { makeBody, mat3, orientValue, step } from './physics3d.js';
+import { makeBody, mat3, orientValue, randomQuat, step } from './physics3d.js';
 import { DiceScene } from './scene3d.js';
 
 // Rotating during pickup must not reroll a stored result; its visible face must still match.
@@ -370,6 +370,126 @@ for (const n of [1, 5, 12]) {
   const centerZ = [...bodies.values()].reduce((sum, b) => sum + b.pos[2], 0) / n;
   assert(Math.abs(centerZ) < scene.bounds.z / 3,
     `${n} dice: the launch group must be in the central third of the table`);
+}
+
+// Adding dice one at a time or restoring a whole round must leave free space around every die.
+for (const types of [[4, 6, 8, 10, 12, 20, 100], [100]]) for (const [width, height] of [[390, 390], [390, 635], [900, 390]]) for (const bulk of [false, true]) {
+  const dice = Array.from({ length: 12 }, (_, i) => ({ sides: types[i % types.length], value: 1 }));
+  const rect = { left: 0, top: 0, width, height };
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    bounds: { x: 2.7, z: 2.7 }, rect, bodies: new Map(),
+    table: { getBoundingClientRect: () => rect },
+    topTray: { classList: { contains: () => true } }, bottomTray: { classList: { contains: () => true } },
+    renderer: { setSurface() {}, measure() {} }, refreshEntries() {}, placeTargets() {}, invalidate() {},
+  });
+  if (bulk) scene.sync(dice, new Map());
+  else for (let n = 1; n <= dice.length; n++) scene.sync(dice.slice(0, n), new Map());
+  const bodies = [...scene.bodies.values()];
+  for (let i = 0; i < bodies.length; i++) {
+    const a = bodies[i];
+    assert.equal(readValue(a.shape, mat3(a.quat)), a.die.value);
+    assert(Math.abs(a.pos[0]) + a.shape.radius <= scene.bounds.x);
+    assert(Math.abs(a.pos[2]) + a.shape.radius <= scene.bounds.z);
+    for (const b of bodies.slice(i + 1)) assert(
+      Math.hypot(a.pos[0] - b.pos[0], a.pos[2] - b.pos[2]) > a.shape.radius + b.shape.radius,
+      `${bulk ? 'bulk' : 'incremental'} add: dice must not overlap`);
+  }
+  const positions = bodies.map(b => [...b.pos]);
+  for (let n = dice.length - 1; n > 0; n--) {
+    scene.sync(dice.slice(0, n), new Map());
+    assert.deepEqual([...scene.bodies.values()].map(b => b.pos), positions.slice(0, n),
+      'removing dice must not squeeze the remaining dice together');
+  }
+}
+
+// Physics can sleep a cube balanced on an edge; it needs a physical nudge, not a pose snap.
+{
+  const die = { sides: 6, value: 1 };
+  const body = makeBody(buildDie(6), [0, 0.65, 0], [0, 0, Math.sin(Math.PI / 8), Math.cos(Math.PI / 8)]);
+  body.die = die; body.faceValues = Uint8Array.from([6, 5, 4, 3, 2, 1]);
+  for (let n = 0; n < 240; n++) step([body], 1 / 120, { x: 3, z: 4 });
+  assert(body.sleeping, 'the physical solver accepts the balanced edge');
+  const neighbor = orientValue(makeBody(buildDie(6), [0.9, 1, 0]), 3);
+  neighbor.die = { sides: 6, value: 3 };
+  const neighborPose = [...neighbor.pos, ...neighbor.quat];
+  const numbering = [...body.faceValues], pose = [...body.pos, ...body.quat];
+  let committed = 0;
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    bodies: new Map([[die, body], [neighbor.die, neighbor]]), active: [body, neighbor], tableBodies: [body, neighbor],
+    bounds: { x: 3, z: 4 }, lastTime: 0, accumulator: 0, dropped: true,
+    invalidate() {}, draw() {}, onSettle() { committed++; },
+  });
+  scene.tick(16);
+  assert.equal(body.sleeping, false, 'a balanced edge must be nudged awake');
+  assert.equal(committed, 0, 'a cocked die has no final result yet');
+  assert.deepEqual([...body.pos, ...body.quat], pose, 'the nudge must not teleport or rotate the die');
+  assert.deepEqual([...neighbor.pos, ...neighbor.quat], neighborPose, 'the nudge leaves valid neighbors untouched');
+  for (let n = 1; n < 1200 && !committed; n++) scene.tick(16 + n * 1000 / 60);
+  const m = mat3(body.quat);
+  assert(Math.max(...body.shape.faces.map(f => m[1] * f.normal[0] + m[4] * f.normal[1] + m[7] * f.normal[2])) > 0.999,
+    'the nudged die must physically land flat before committing');
+  assert.deepEqual([...body.faceValues], numbering, 'a corrective nudge keeps the existing face numbering');
+  assert.equal(die.value, body.faceValues[readValue(body.shape, m) - 1]);
+  assert.equal(committed, 1);
+}
+
+// Sensor changes can keep resetting physical sleep: results must still commit within a bounded time.
+{
+  const die = { sides: 6, value: 2 }, body = orientValue(makeBody(buildDie(6), [0, 1, 0]), 2);
+  body.die = die;
+  let committed = 0, resolved = 0;
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    gravity: [0, -1, 0], bodies: new Map([[die, body]]), active: [body], tableBodies: [body],
+    bounds: { x: 3, z: 4 }, lastTime: 0, accumulator: 0,
+    throwing: { dice: [die], resolve() { resolved++; } },
+    invalidate() {}, draw() {}, onSettle() { committed++; },
+  });
+  for (let n = 0; n < 600 && !resolved; n++) {
+    scene.setTilt(1 + n % 2, 0);
+    scene.tick(16 + n * 1000 / 60);
+  }
+  assert.equal(resolved, 1, 'a roll cannot wait forever for a quiet sensor');
+  assert(body.sleeping);
+  assert.equal(die.value, readValue(body.shape, mat3(body.quat)));
+  for (let n = 0; n < 600 && !committed; n++) {
+    scene.setTilt(1 + n % 2, 0);
+    scene.tick(11000 + n * 1000 / 60);
+  }
+  assert.equal(committed, 1, 'free physical play also commits despite sensor movement');
+}
+
+// A real mixed heap leaves D10/D100 leaning against neighbors even after every body sleeps.
+{
+  let seed = 3;
+  const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+  const types = [4, 6, 8, 10, 12, 20, 100];
+  const bodies = Array.from({ length: 12 }, (_, i) => {
+    const b = makeBody(buildDie(types[i % types.length]),
+      [(i % 4 - 1.5) * 1.4, 1.5 + Math.floor(i / 4) * 1.7, (random() - 0.5) * 2], randomQuat(random));
+    b.vel = [-b.pos[0] * 2, random() * 2, (random() - 0.5) * 6];
+    b.ang = [(random() - 0.5) * 30, (random() - 0.5) * 30, (random() - 0.5) * 30];
+    b.die = { sides: b.shape.sides, value: 1 };
+    return b;
+  });
+  const flatness = b => {
+    const m = mat3(b.quat), sign = b.shape.bottomRead ? -1 : 1;
+    return Math.max(...b.shape.faces.map(f => sign * (m[1] * f.normal[0] + m[4] * f.normal[1] + m[7] * f.normal[2])));
+  };
+  for (let n = 0; n < 2400; n++) if (!step(bodies, 1 / 120, { x: 3, z: 4 })) break;
+  assert(bodies.every(b => b.sleeping));
+  assert(bodies.some(b => flatness(b) < 0.99 && b.rest?.length), 'the fixture really contains supported cocked dice');
+  let committed = 0;
+  const scene = Object.assign(Object.create(DiceScene.prototype), {
+    bodies: new Map(bodies.map(b => [b.die, b])), active: bodies, tableBodies: bodies,
+    bounds: { x: 3, z: 4 }, lastTime: 0, accumulator: 0, dropped: true,
+    invalidate() {}, draw() {}, onSettle() { committed++; },
+  });
+  for (let n = 0; n < 2400 && !committed; n++) scene.tick(16 + n * 1000 / 60);
+  assert.equal(committed, 1, 'a supported heap eventually produces a complete round');
+  for (const b of bodies) {
+    assert(b.sleeping && flatness(b) > 0.999, `D${b.shape.sides} has an unambiguous face`);
+    assert.equal(b.die.value, readValue(b.shape, mat3(b.quat)));
+  }
 }
 
 console.log('scene3d tray values ok');

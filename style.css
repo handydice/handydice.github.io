@@ -79,6 +79,10 @@ header button:active { transform: scale(.97); }
 #open { width: 3.5rem; padding: 0; }
 header button:disabled { opacity: .5; cursor: default; }
 #open svg { width: 1.9rem; height: 1.9rem; }
+#install-notice { display: flex; align-items: center; min-width: 0; gap: .2rem; }
+#install-notice button { min-height: 2.75rem; font-size: .85rem; padding: 0 .5rem; }
+#install-shortcut { min-width: 0; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#install-notice #install-dismiss { flex: none; justify-content: center; min-width: 2.75rem; font-size: 1.3rem; padding: 0; }
 
 /* Die size and row layout adapt to the available table area. */
 #dice {

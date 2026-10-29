@@ -1,8 +1,8 @@
 // Bump on every release so installed clients precache the new files.
-const CACHE = 'handydice-2d-3d-v20';
+const CACHE = 'handydice-2d-3d-v22';
 const ASSETS = [
   './', './index.html', './style.css',
-  './app.js', './dice.js', './layout.js', './i18n.js', './sound.js', './state.js', './viewport.js',
+  './app.js', './dice.js', './layout.js', './i18n.js', './sound.js', './state.js', './viewport.js', './install.js',
   './dice3d.js', './physics3d.js', './renderer3d.js', './scene3d.js',
   './story.js', './icons/story/LICENSE',
   './icons/story/house.svg', './icons/story/lightbulb.svg', './icons/story/sleep.svg', './icons/story/speech.svg', './icons/story/clock.svg', './icons/story/arrow.svg',
